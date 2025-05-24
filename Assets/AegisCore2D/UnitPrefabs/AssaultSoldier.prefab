@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6484988395548159821
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1366942784340612615}
+  m_Layer: 11
+  m_Name: ShootPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1366942784340612615
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6484988395548159821}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6191140757924315684}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1232382691388396612
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8,6 +39,26 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1084987977923794066, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: radius
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1445582656295480291, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: isRanged
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1445582656295480291, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: attackRange
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 1445582656295480291, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: projectilePrefab
+      value: 
+      objectReference: {fileID: 7354186900330997814, guid: e7ac140b0a813a744af8e085b261743f, type: 3}
+    - target: {fileID: 1445582656295480291, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: projectileSpawnPoint
+      value: 
+      objectReference: {fileID: 1366942784340612615}
     - target: {fileID: 2597344787920441252, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
       propertyPath: m_Name
       value: AssaultSoldier
@@ -68,6 +119,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5289024242008976677, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: m_Radius
+      value: 0.3777066
+      objectReference: {fileID: 0}
+    - target: {fileID: 5289024242008976677, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: m_Offset.x
+      value: -0.027453717
+      objectReference: {fileID: 0}
     - target: {fileID: 5661507692526318886, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
       propertyPath: m_Sprite
       value: 
@@ -76,8 +135,28 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6755962195548524677, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: m_Radius
+      value: 0.3777066
+      objectReference: {fileID: 0}
+    - target: {fileID: 6755962195548524677, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: m_Offset.x
+      value: -0.027453717
+      objectReference: {fileID: 0}
+    - target: {fileID: 6755962195548524677, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: m_IsTrigger
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 4967774064066041440, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1366942784340612615}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+--- !u!4 &6191140757924315684 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4967774064066041440, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+  m_PrefabInstance: {fileID: 1232382691388396612}
+  m_PrefabAsset: {fileID: 0}
