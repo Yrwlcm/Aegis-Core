@@ -30018,6 +30018,91 @@ Tilemap:
     e31: 0
     e32: 0
     e33: 1
+--- !u!1001 &747655684
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1523571619910754914, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_Simulated
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3824069373044087776, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_Name
+      value: AssaultSoldier (7)
+      objectReference: {fileID: 0}
+    - target: {fileID: 3824069373044087776, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_Layer
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 5664597677885842486, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: _teamIdInternal
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 8.26
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -1.2610959
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6878355204679531054, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_Layer
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 7484459188625626626, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_Layer
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 8045433420708794012, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: teamId
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8045433420708794012, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: maxHealth
+      value: 1000
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
 --- !u!1001 &799112586
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -31134,6 +31219,87 @@ Tilemap:
     e31: 0
     e32: 0
     e33: 1
+--- !u!1001 &1279969982
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3824069373044087776, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_Name
+      value: AssaultSoldier (8)
+      objectReference: {fileID: 0}
+    - target: {fileID: 3824069373044087776, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_Layer
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 5664597677885842486, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: _teamIdInternal
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 8.26
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -2.65
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6191140757924315684, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6878355204679531054, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_Layer
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 7484459188625626626, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: m_Layer
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 8045433420708794012, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: teamId
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8045433420708794012, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: maxHealth
+      value: 1000
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
 --- !u!114 &1305820259
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31153,7 +31319,7 @@ MonoBehaviour:
     m_Bits: 2048
   attackableMask:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4096
   teamId: 0
   isPlayerManager: 1
 --- !u!1 &1471271595
@@ -31747,4 +31913,6 @@ SceneRoots:
   - {fileID: 799112586}
   - {fileID: 82388839}
   - {fileID: 1017651554}
+  - {fileID: 747655684}
+  - {fileID: 1279969982}
   - {fileID: 1625187848}

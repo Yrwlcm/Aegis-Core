@@ -1,8 +1,9 @@
 // HealthBarUI.cs
+
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace AegisCore2D
+namespace AegisCore2D.UnitScripts
 {
     public class HealthBarUI : MonoBehaviour
     {

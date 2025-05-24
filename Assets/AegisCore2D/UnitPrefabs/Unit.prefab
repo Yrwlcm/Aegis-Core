@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 7704900028091151931}
   - component: {fileID: 2644989122194197073}
   - component: {fileID: 9132546426040802008}
+  - component: {fileID: 1445582656295480291}
   m_Layer: 11
   m_Name: Unit
   m_TagString: Untagged
@@ -112,7 +113,7 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 1
-  m_LinearDamping: 0
+  m_LinearDamping: 10000
   m_AngularDamping: 0.05
   m_GravityScale: 0
   m_Material: {fileID: 0}
@@ -246,6 +247,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _teamIdInternal: 0
   moveComponent: {fileID: 2737966028222587154}
+  attackComponent: {fileID: 1445582656295480291}
   outline: {fileID: 5748088130335657305}
   healthBarPrefab: {fileID: 7970832370652994356, guid: bcd0c361fca085348a61747b7222000b, type: 3}
 --- !u!114 &2737966028222587154
@@ -290,6 +292,8 @@ MonoBehaviour:
   targetMarker: {fileID: 2008208381768278733}
   markerColor: {r: 0, g: 1, b: 1, a: 1}
   markerSize: 0.18
+  defaultPathColor: {r: 0, g: 1, b: 1, a: 1}
+  attackPathColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!120 &2644989122194197073
 LineRenderer:
   serializedVersion: 2
@@ -408,7 +412,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 100
-  teamId: 0
+--- !u!114 &1445582656295480291
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2597344787920441252}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8207780b0a2fcd479b42a8211ee00d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  damageAmount: 10
+  attackRange: 1
+  attackCooldown: 1.5
 --- !u!1 &5651628420500188778
 GameObject:
   m_ObjectHideFlags: 0

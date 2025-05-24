@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Pathfinding;
 using UnityEngine;
 
@@ -20,16 +21,21 @@ namespace AegisCore2D.UnitScripts
         AIPath agent;
         bool visible;
 
+        [Header("Colors")]
+        [SerializeField] private Color defaultPathColor = Color.cyan; // Старый markerColor
+        [SerializeField] private Color attackPathColor = Color.red;
+
         void Awake()
         {
             agent = GetComponent<AIPath>();
 
             line.positionCount = 0;
             line.startWidth = line.endWidth = width;
-            line.startColor = line.endColor = markerColor;
+            // Устанавливаем дефолтный цвет при создании
+            SetPathColor(defaultPathColor); 
 
             targetMarker.transform.localScale = Vector3.one * markerSize;
-            targetMarker.color = markerColor;
+            // targetMarker.color = markerColor; // Цвет маркера будет меняться вместе с линией
             targetMarker.enabled = false;
         }
 
@@ -40,6 +46,13 @@ namespace AegisCore2D.UnitScripts
             pathBuffer.Clear();
             agent.GetRemainingPath(pathBuffer, out _);
 
+            if (Vector3.Distance(agent.destination, pathBuffer.Last()) > 0.6f)
+            {
+                var startPoint = pathBuffer.First();
+                pathBuffer.Clear();
+                pathBuffer.Add(startPoint);
+                pathBuffer.Add(agent.destination);
+            }
             if (pathBuffer.Count == 0)
             {
                 line.positionCount = 0;
@@ -64,7 +77,35 @@ namespace AegisCore2D.UnitScripts
             visible = state;
             line.enabled = state;
             targetMarker.enabled = state;
-            if (!state) line.positionCount = 0;
+            if (!state)
+            {
+                line.positionCount = 0;
+                // При скрытии можно сбрасывать цвет на дефолтный, если команда отменилась
+                SetPathColor(defaultPathColor); 
+            }
+        }
+
+        public void SetPathColor(Color newColor)
+        {
+            // markerColor = newColor; // Обновляем текущий цвет, если он используется где-то еще
+            line.startColor = line.endColor = newColor;
+            if (targetMarker != null) // Проверка, если маркер опционален
+            {
+                targetMarker.color = newColor;
+            }
+        }
+
+        // Метод для установки типа пути (и соответствующего цвета)
+        public void SetPathMode(bool isAttackMode)
+        {
+            if (isAttackMode)
+            {
+                SetPathColor(attackPathColor);
+            }
+            else
+            {
+                SetPathColor(defaultPathColor);
+            }
         }
     }
 }

@@ -1,8 +1,7 @@
-﻿using UnityEngine;
-using System;
-using AegisCore2D.UnitScripts;
+﻿using System;
+using UnityEngine;
 
-namespace AegisCore2D
+namespace AegisCore2D.UnitScripts
 {
     public class HealthComponent : MonoBehaviour, IDamageable
     {
@@ -11,7 +10,7 @@ namespace AegisCore2D
         private float currentHealth;
 
         [Header("Team")]
-        [SerializeField] private int teamId; // Будет браться из Unit или устанавливаться отдельно
+        private int teamId; // Будет браться из Unit или устанавливаться отдельно
 
         public event Action<float, float> OnHealthChanged; // currentHealth, maxHealth
         public event Action<GameObject> OnDeath;           // GameObject атакующего, если есть

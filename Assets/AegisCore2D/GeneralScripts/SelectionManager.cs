@@ -82,16 +82,30 @@ namespace AegisCore2D.GeneralScripts
             dragRect.min = min;
             dragRect.max = max;
 
-            foreach (var sel in pool)
+            foreach (var sel in pool) // sel это ISelectable
             {
                 Vector2 scr = cam.WorldToScreenPoint(sel.GameObject.transform.position);
                 if (dragRect.Contains(scr))
                 {
-                    if (dragBuffer.Add(sel)) sel.EnableOutline();
+                    // Подсвечиваем только своих юнитов во время драггинга
+                    if (sel.Team == teamId)
+                    {
+                        if (dragBuffer.Add(sel)) sel.EnableOutline();
+                    }
                 }
-                else if (dragBuffer.Remove(sel) && !selected.Contains((Unit)sel))
+                else // Если юнит не в прямоугольнике выделения
                 {
-                    sel.DisableOutline();
+                    if (dragBuffer.Remove(sel)) // Если он был в буфере
+                    {
+                        // Снимаем аутлайн только если он не в основном списке выбранных `selected`
+                        // Иначе, если он уже был выбран до драггинга, аутлайн снимется зря.
+                        // Unit должен быть приводимым к Unit, чтобы проверить selected.Contains
+                        Unit unitSel = sel as Unit;
+                        if (unitSel == null || !selected.Contains(unitSel))
+                        {
+                            sel.DisableOutline();
+                        }
+                    }
                 }
             }
         }
@@ -124,10 +138,15 @@ namespace AegisCore2D.GeneralScripts
 
         void BoxSelect()
         {
-            foreach (var s in dragBuffer) Select((Unit)s);
+            foreach (var s in dragBuffer)
+            {
+                if (s.Team != teamId) // this.teamId - это teamId текущего SelectionManager'а
+                    continue;
+
+                Select((Unit)s);
+            }
         }
 
-        /* ─── command input ─── */
         void HandleCommandInput()
         {
             if (Mouse.current.rightButton.wasPressedThisFrame)
@@ -137,8 +156,46 @@ namespace AegisCore2D.GeneralScripts
                 Vector2 screen = Mouse.current.position.ReadValue();
                 Vector2 world = cam.ScreenToWorldPoint(screen);
 
-                BroadcastMove(world,
-                    (target, _, _) => target); // FormationUtility.GetSpiralOffset(index, spacing: 0.8f)
+                // Проверяем, есть ли под курсором объект для атаки
+                // Используем Physics2D.OverlapPoint для поиска коллайдера
+                Collider2D
+                    hitAttackable =
+                        Physics2D.OverlapPoint(world, attackableMask); // attackableMask должна быть настроена на врагов
+
+                if (hitAttackable != null)
+                {
+                    IDamageable damageableTarget = hitAttackable.GetComponent<IDamageable>();
+                    // Также можно проверить GetComponentInParent или GetComponentInChildren, если IDamageable не на том же объекте, что и коллайдер.
+
+                    if (damageableTarget != null && damageableTarget.IsAlive)
+                    {
+                        // Проверяем, что цель не из нашей команды (если это не дружественный огонь :))
+                        // Это дублирует проверку в AttackComponent, но здесь это для UI/UX - чтобы курсор менялся и т.д.
+                        bool isOwnTeamTarget = false;
+                        if (selected.Count > 0) // Берем команду первого выделенного юнита для сравнения
+                        {
+                            Unit firstSelectedUnit = selected.First(); // LINQ, нужно using System.Linq;
+                            if (firstSelectedUnit.Team == damageableTarget.TeamId &&
+                                damageableTarget.TeamId != -1) // -1 может быть нейтральной командой
+                            {
+                                isOwnTeamTarget = true;
+                            }
+                        }
+
+                        if (!isOwnTeamTarget)
+                        {
+                            Debug.Log($"Commanding selected units to attack {damageableTarget.MyGameObject.name}");
+                            BroadcastAttack(damageableTarget);
+                            return; // Команда атаки выдана, выходим
+                        }
+                        // Если цель своя, то можно либо ничего не делать, либо выдать команду Move (например, следовать за союзником)
+                        // Пока просто проигнорируем и перейдем к MoveCommand ниже, если это был союзник
+                    }
+                }
+
+                // Если не кликнули по врагу (или кликнули по союзнику/пустому месту), даем команду Move
+                //Debug.Log($"Commanding selected units to move to {world}");
+                BroadcastMove(world, (targetCenter, unit, index) => targetCenter);
             }
         }
 
@@ -146,12 +203,13 @@ namespace AegisCore2D.GeneralScripts
         {
             var index = 0;
             foreach (Unit u in selected)
-                u.Enqueue(new MoveCommand(modifyTarget(target, u, index++)));
+                u.SetCommand(new MoveCommand(modifyTarget(target, u, index++)));
         }
 
-        void Broadcast(IUnitCommand cmd)
+        void BroadcastAttack(IDamageable target)
         {
-            foreach (Unit u in selected) u.Enqueue(cmd);
+            foreach (Unit u in selected)
+                u.SetCommand(new AttackCommand(u, target)); // Передаем самого юнита и цель
         }
 
         /* ─── selection utilities ─── */
@@ -166,7 +224,6 @@ namespace AegisCore2D.GeneralScripts
             foreach (var unit in units)
             {
                 unit.Select();
-                unit.GetComponent<PathDisplay>()?.SetVisible(true);
             }
 
             selected.UnionWith(units);
@@ -177,7 +234,6 @@ namespace AegisCore2D.GeneralScripts
             foreach (var unit in units)
             {
                 unit.Deselect();
-                unit.GetComponent<PathDisplay>()?.SetVisible(false);
             }
 
             selected.ExceptWith(units);
