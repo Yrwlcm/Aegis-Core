@@ -24,6 +24,7 @@ namespace AegisCore2D.GameManagement
         [SerializeField] private TextMeshProUGUI waveCounterText;
         [SerializeField] private TextMeshProUGUI enemiesRemainingText;
         [SerializeField] private TextMeshProUGUI nextWaveTimerText;
+        [SerializeField] private Image nextWaveTimerBox;
         [SerializeField] private TextMeshProUGUI gameStatusText;
         [SerializeField] private GameObject spawnIndicatorPrefab;
 
@@ -268,10 +269,12 @@ namespace AegisCore2D.GameManagement
                     && countdownToNextWave > 0)
                 {
                     nextWaveTimerText.gameObject.SetActive(true);
-                    nextWaveTimerText.text = $"Следующая волна через: {Mathf.CeilToInt(countdownToNextWave)}с";
+                    nextWaveTimerBox.gameObject.SetActive(true);
+                    nextWaveTimerText.text = $"Следующая волна через:\n{Mathf.CeilToInt(countdownToNextWave)}с";
                 }
                 else
                 {
+                    nextWaveTimerBox.gameObject.SetActive(false);
                     nextWaveTimerText.gameObject.SetActive(false);
                 }
             }
