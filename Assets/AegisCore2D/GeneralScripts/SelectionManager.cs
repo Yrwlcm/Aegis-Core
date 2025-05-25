@@ -435,5 +435,7 @@ namespace AegisCore2D.GeneralScripts
             }
             mgr.dragBuffer.Remove(unit); // Also from drag buffer
         }
+        
+        public int GetSelectedUnitCount_DEBUG() => pool.Count;
     }
 }
