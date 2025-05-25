@@ -1,49 +1,49 @@
 fileFormatVersion: 2
-guid: 7d1e83d5fe04e374688dcb8b008c6e82
+guid: 9d2eeb668cecbb54399d41c62ef4c18b
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 372622031870172341
-    second: Scarab_0
+      213: -3757717340476821875
+    second: small-explosion_0
   - first:
-      213: -5831119921745226977
-    second: Scarab_1
+      213: 142589478209046883
+    second: small-explosion_1
   - first:
-      213: -509633119068516425
-    second: Scarab_2
+      213: -4306201562398200815
+    second: small-explosion_2
   - first:
-      213: 837786294858987567
-    second: Scarab_3
+      213: -6363836124078235486
+    second: small-explosion_3
   - first:
-      213: 5894700993271887926
-    second: Scarab_4
+      213: 2305024102803389895
+    second: small-explosion_4
   - first:
-      213: -6353616782675841699
-    second: Scarab_5
+      213: 6530032218792383671
+    second: small-explosion_5
   - first:
-      213: 7462357489550536158
-    second: Scarab_6
+      213: 6000982696348679077
+    second: small-explosion_6
   - first:
-      213: 1729394327092400296
-    second: Scarab_7
+      213: 8020484379744981429
+    second: small-explosion_7
   - first:
-      213: -4938190140845207852
-    second: Scarab_8
+      213: 8170977949595446898
+    second: small-explosion_8
   - first:
-      213: -2518418445511643430
-    second: Scarab_9
+      213: 223547346568343501
+    second: small-explosion_9
   - first:
-      213: -3983721007543660762
-    second: Scarab_10
+      213: -4530195922793433698
+    second: small-explosion_10
   - first:
-      213: -2439385086012503889
-    second: Scarab_11
+      213: -7363808692926415379
+    second: small-explosion_11
   - first:
-      213: -5726071323620390219
-    second: Scarab_12
+      213: -3850183920413969967
+    second: small-explosion_12
   - first:
-      213: 4555319186464172555
-    second: Scarab_13
+      213: -5926331033944256919
+    second: small-explosion_13
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -76,7 +76,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -90,7 +90,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 24
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -114,7 +114,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -152,299 +152,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Scarab_0
-      rect:
-        serializedVersion: 2
-        x: 1
-        y: 64
-        width: 16
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 5bc1b1583c1db2500800000000000000
-      internalID: 372622031870172341
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_1
-      rect:
-        serializedVersion: 2
-        x: 16
-        y: 64
-        width: 17
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: f131ca56353b31fa0800000000000000
-      internalID: -5831119921745226977
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_2
-      rect:
-        serializedVersion: 2
-        x: 1
-        y: 48
-        width: 16
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 7bf852cd06b6de8f0800000000000000
-      internalID: -509633119068516425
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_3
-      rect:
-        serializedVersion: 2
-        x: 17
-        y: 48
-        width: 16
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: f28b2c6423a60ab00800000000000000
-      internalID: 837786294858987567
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_4
-      rect:
-        serializedVersion: 2
-        x: 33
-        y: 48
-        width: 16
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 638fc19625f2ec150800000000000000
-      internalID: 5894700993271887926
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_5
-      rect:
-        serializedVersion: 2
-        x: 49
-        y: 48
-        width: 16
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: d5d65a5f23b63d7a0800000000000000
-      internalID: -6353616782675841699
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_6
-      rect:
-        serializedVersion: 2
-        x: 0
-        y: 32
-        width: 16
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: edda2a7799e9f8760800000000000000
-      internalID: 7462357489550536158
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_7
-      rect:
-        serializedVersion: 2
-        x: 0
-        y: 16
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 8a01bee4afa000810800000000000000
-      internalID: 1729394327092400296
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_8
-      rect:
-        serializedVersion: 2
-        x: 16
-        y: 32
-        width: 15
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 4dec5950b36087bb0800000000000000
-      internalID: -4938190140845207852
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_9
-      rect:
-        serializedVersion: 2
-        x: 16
-        y: 16
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: adeac7754c7cc0dd0800000000000000
-      internalID: -2518418445511643430
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_10
-      rect:
-        serializedVersion: 2
-        x: 32
-        y: 16
-        width: 17
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 62f491da9daf6b8c0800000000000000
-      internalID: -3983721007543660762
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_11
-      rect:
-        serializedVersion: 2
-        x: 49
-        y: 16
-        width: 16
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: fa8c6dd4030952ed0800000000000000
-      internalID: -2439385086012503889
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_12
-      rect:
-        serializedVersion: 2
-        x: 64
-        y: 16
-        width: 16
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 5ba4e0d1878e880b0800000000000000
-      internalID: -5726071323620390219
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Scarab_13
+      name: small-explosion_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 16
-        height: 9
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -453,8 +167,184 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: b0ae7bb3aaeb73f30800000000000000
-      internalID: 4555319186464172555
+      spriteID: d8ead82fcf7e9dbc0800000000000000
+      internalID: -3757717340476821875
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: small-explosion_1
+      rect:
+        serializedVersion: 2
+        x: 24
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 369cb5dff549af100800000000000000
+      internalID: 142589478209046883
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: small-explosion_2
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11ce5068e7c4d34c0800000000000000
+      internalID: -4306201562398200815
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: small-explosion_3
+      rect:
+        serializedVersion: 2
+        x: 72
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a0a48f13cc1fa7a0800000000000000
+      internalID: -6363836124078235486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: small-explosion_4
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7cd3f4e75371dff10800000000000000
+      internalID: 2305024102803389895
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: small-explosion_5
+      rect:
+        serializedVersion: 2
+        x: 120
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7b4d9f494b55f9a50800000000000000
+      internalID: 6530032218792383671
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: small-explosion_6
+      rect:
+        serializedVersion: 2
+        x: 144
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5abf02fb7f5c74350800000000000000
+      internalID: 6000982696348679077
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: small-explosion_7
+      rect:
+        serializedVersion: 2
+        x: 168
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b1d44d8c0c7e4f60800000000000000
+      internalID: 8020484379744981429
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: small-explosion_8
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27eaf294725256170800000000000000
+      internalID: 8170977949595446898
       vertices: []
       indices: 
       edges: []
@@ -463,7 +353,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5cb5fc5bcd815ca4f8381a4de014a372
     internalID: 0
     vertices: []
     indices: 
@@ -472,7 +362,16 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      small-explosion_0: -3757717340476821875
+      small-explosion_1: 142589478209046883
+      small-explosion_2: -4306201562398200815
+      small-explosion_3: -6363836124078235486
+      small-explosion_4: 2305024102803389895
+      small-explosion_5: 6530032218792383671
+      small-explosion_6: 6000982696348679077
+      small-explosion_7: 8020484379744981429
+      small-explosion_8: 8170977949595446898
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

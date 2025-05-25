@@ -13,6 +13,8 @@ namespace AegisCore2D.UnitScripts
         [Header("Attack Type")]
         [SerializeField] private bool isRanged = false;
 
+        public bool IsRanged => isRanged; 
+
         [Header("Line of Sight (for Ranged)")]
         [Tooltip("Слой, который блокирует линию огня для атак дальнего боя.")]
         [SerializeField] private LayerMask lineOfSightMask; // Сюда нужно будет добавить слой "Obstacle"

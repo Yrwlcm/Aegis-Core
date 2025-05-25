@@ -41,8 +41,14 @@ namespace AegisCore2D.UnitScripts
         private static Canvas worldSpaceCanvas; // Shared canvas for all unit health bars
         private static readonly int IsWalking = Animator.StringToHash("IsWalking");
         private static readonly int Shoot = Animator.StringToHash("Shoot");
+        private static readonly int Die = Animator.StringToHash("Die");
+        private static readonly int Melee = Animator.StringToHash("Melee");
+        private static readonly int Explode = Animator.StringToHash("Explode");
         private PathDisplay pathDisplay;
         private Animator animator;
+        
+        [Header("Effects")]
+        [SerializeField] private Animator explosionEffectAnimator;
 
         public UnitMove MoveComponent => moveComponent;
         public AttackComponent AttackComponent => attackComponent;
@@ -133,7 +139,10 @@ namespace AegisCore2D.UnitScripts
         
         private void HandleAttackPerformed(IDamageable target) // IDamageable может не использоваться здесь
         {
-            TriggerShootAnimation();
+            if (attackComponent.IsRanged)
+                TriggerShootAnimation();
+            else
+                TriggerMeleeAnimation();
         }
         
         private void UpdateAnimations()
@@ -157,15 +166,26 @@ namespace AegisCore2D.UnitScripts
                 animator.SetTrigger(Shoot);
             }
         }
+        
+        public void TriggerMeleeAnimation()
+        {
+            if (animator != null && Health.IsAlive)
+            {
+                animator.SetTrigger(Melee);
+            }
+        }
 
         private void HandleDeath(GameObject attacker) // GameObject attacker - кто нанес последний удар
         {
             // 1. Запускаем анимацию смерти
             if (animator != null)
             {
-                animator.SetTrigger("Die"); // Используем триггер "Die"
-                // Если бы мы хотели проиграть конкретный стейт без настроенных переходов:
-                // animator.Play("Unit_Death"); // Это проиграет стейт с именем "Unit_Death" из нулевого слоя
+                animator.SetTrigger(Die);
+                
+            }
+            if (explosionEffectAnimator != null)
+            {
+                explosionEffectAnimator.SetTrigger(Explode);
             }
 
             // 2. Очищаем текущую команду, если была
@@ -178,23 +198,34 @@ namespace AegisCore2D.UnitScripts
             // SelectionManager.RemoveUnitForTeam(this, Team); // Если объект будет жить некоторое время для анимации
 
             // 5. Деактивируем компоненты, которые могут мешать анимации смерти или продолжать логику
-            if (moveComponent != null) moveComponent.Stop(); // Останавливаем движение
-            if (AttackComponent != null) AttackComponent.enabled = false; // Отключаем возможность атаковать
-            if (GetComponent<Collider2D>() != null) GetComponent<Collider2D>().enabled = false; // Отключаем коллайдер, чтобы не мешал
-            // Отключаем AI, если есть
+            if (moveComponent != null) moveComponent.Stop();
+            if (AttackComponent != null) AttackComponent.enabled = false;
+            if (GetComponent<Collider2D>() != null) GetComponent<Collider2D>().enabled = false;
             var aiComponent = GetComponent<AegisCore2D.AI.BasicUnitAI>();
             if (aiComponent != null) aiComponent.enabled = false;
 
 
-            // 6. Запускаем корутину для уничтожения объекта ПОСЛЕ проигрывания анимации
-            StartCoroutine(DestroyAfterAnimation(GetAnimationLength("Unit_Death")));
+            var deathEffectDuration = 0f;
+            if (explosionEffectAnimator != null)
+            {
+                deathEffectDuration = GetAnimationLength(explosionEffectAnimator,"Explosion");
+            }
+            else
+            {
+                var deathAnimation = GetAnimationLength(animator,"Death");
+                if (deathAnimation > deathEffectDuration)
+                    deathEffectDuration = deathAnimation;
+            }
+            
+    
+            StartCoroutine(DestroyAfterDelay(deathEffectDuration));
         }
         
-        private float GetAnimationLength(string animationName)
+        private float GetAnimationLength(Animator animator, string animationName)
         {
             if (animator == null) return 0f;
 
-            RuntimeAnimatorController ac = animator.runtimeAnimatorController;
+            var ac = animator.runtimeAnimatorController;
             for (int i = 0; i < ac.animationClips.Length; i++)
             {
                 if (ac.animationClips[i].name == animationName)
@@ -203,17 +234,14 @@ namespace AegisCore2D.UnitScripts
                 }
             }
             Debug.LogWarning($"Длина анимации '{animationName}' не найдена.");
-            return 1f; // Возвращаем значение по умолчанию, если не нашли
+            return 0f; // Возвращаем значение по умолчанию, если не нашли
         }
 
-        private IEnumerator DestroyAfterAnimation(float delay)
+        private IEnumerator DestroyAfterDelay(float delay)
         {
             yield return new WaitForSeconds(delay);
-
-            // Убедимся, что объект еще существует (на всякий случай)
             if (this != null && gameObject != null)
             {
-                // Отписка от SelectionManager происходит в OnDestroy, который вызовется при Destroy(gameObject)
                 Destroy(gameObject);
             }
         }

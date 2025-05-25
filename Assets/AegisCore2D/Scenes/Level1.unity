@@ -32277,13 +32277,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   waves:
-  - enemyPrefab: {fileID: 590442910115715422, guid: 1586d8d75e221e24e9b5627096b8fba7, type: 3}
+  - enemyPrefab: {fileID: 8669374207673397093, guid: 5c8473d12cf38e44990efd160b713cf1, type: 3}
     enemyCount: 3
     spawnPointOverride: {fileID: 0}
     delayBeforeWave: 0
     spawnInterval: 0
     waveAnnouncement: 
-  - enemyPrefab: {fileID: 590442910115715422, guid: 1586d8d75e221e24e9b5627096b8fba7, type: 3}
+  - enemyPrefab: {fileID: 8669374207673397093, guid: 5c8473d12cf38e44990efd160b713cf1, type: 3}
     enemyCount: 3
     spawnPointOverride: {fileID: 0}
     delayBeforeWave: 20
