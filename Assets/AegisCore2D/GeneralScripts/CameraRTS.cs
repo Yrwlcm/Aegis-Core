@@ -26,6 +26,13 @@ namespace AegisCore2D.GeneralScripts
 
         private void Update()
         {
+            if (Time.timeScale == 0f)
+            {
+                // Если тащили камеру средней кнопкой, сбрасываем
+                if (dragging) dragging = false; 
+                return;
+            }
+            
             HandleMiddleDrag();
             HandleEdgePan();
             HandleZoom();
