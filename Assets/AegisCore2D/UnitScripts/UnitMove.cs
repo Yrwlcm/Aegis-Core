@@ -6,7 +6,7 @@ namespace AegisCore2D.UnitScripts
     [RequireComponent(typeof(Seeker), typeof(AIPath))]
     public sealed class UnitMove : MonoBehaviour
     {
-        private AIPath agent;
+        public AIPath agent;
 
         private void Awake()
         {

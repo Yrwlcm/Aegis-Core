@@ -1,5 +1,4 @@
-// PathDisplay.cs
-
+// --- START OF FILE PathDisplay.cs ---
 using System.Collections.Generic;
 using System.Linq;
 using Pathfinding;
@@ -10,13 +9,12 @@ namespace AegisCore2D.UnitScripts
     [RequireComponent(typeof(AIPath))]
     public sealed class PathDisplay : MonoBehaviour
     {
-        [Header("Line")] [SerializeField] LineRenderer line;
+        [Header("Line")]
+        [SerializeField] LineRenderer line;
         [SerializeField] float width = 0.04f;
 
-        [Header("Target Marker")] [SerializeField]
-        SpriteRenderer targetMarker;
-
-        [SerializeField] Color markerColor = Color.cyan; // This will be overridden by SetPathColor
+        [Header("Target Marker")]
+        [SerializeField] SpriteRenderer targetMarker;
         [SerializeField] float markerSize = 0.18f;
 
         readonly List<Vector3> pathBuffer = new();
@@ -26,8 +24,11 @@ namespace AegisCore2D.UnitScripts
         [Header("Colors")]
         [SerializeField] private Color defaultPathColor = Color.cyan;
         [SerializeField] private Color attackPathColor = Color.red;
+        [SerializeField] private Color attackMovePathColor = Color.yellow;
 
-        private IDamageable attackTargetOverride; // To store the specific attack target
+        private IDamageable attackTargetOverride;
+        public enum PathDisplayMode { None, Default, Attack, AttackMove }
+        private PathDisplayMode currentDisplayMode = PathDisplayMode.None;
 
         void Awake()
         {
@@ -35,10 +36,10 @@ namespace AegisCore2D.UnitScripts
 
             line.positionCount = 0;
             line.startWidth = line.endWidth = width;
-            SetPathColor(defaultPathColor); // Initialize with default color
 
             targetMarker.transform.localScale = Vector3.one * markerSize;
             targetMarker.enabled = false;
+            SetDisplayMode(PathDisplayMode.Default); // Initialize with a default mode
         }
 
         public void SetAttackTargetOverride(IDamageable target)
@@ -48,41 +49,35 @@ namespace AegisCore2D.UnitScripts
 
         void Update()
         {
-            if (!visible)
+            if (!visible || currentDisplayMode == PathDisplayMode.None)
             {
                 line.enabled = false;
                 targetMarker.enabled = false;
                 return;
             }
 
-            if (attackTargetOverride != null && attackTargetOverride.IsAlive)
+            line.enabled = true;
+            targetMarker.enabled = true;
+
+            if (currentDisplayMode == PathDisplayMode.Attack && attackTargetOverride != null && attackTargetOverride.IsAlive)
             {
-                // ATTACK TARGET OVERRIDE MODE: Draw a direct line to the attack target.
-                // Color should have been set to red by Unit.cs calling SetPathMode(true).
                 line.positionCount = 2;
-                line.SetPosition(0, transform.position); // Unit's current position
+                line.SetPosition(0, transform.position);
                 line.SetPosition(1, attackTargetOverride.MyTransform.position);
-                line.enabled = true;
-
                 targetMarker.transform.position = attackTargetOverride.MyTransform.position;
-                targetMarker.enabled = true;
             }
-            else
+            else if (currentDisplayMode == PathDisplayMode.Default || currentDisplayMode == PathDisplayMode.AttackMove)
             {
-                // NORMAL MOVEMENT PATH MODE (or no specific path to draw for current command)
-                // Color should have been set to default by Unit.cs calling SetPathMode(false).
-
                 bool shouldDrawAiPath = agent.hasPath &&
                                         !agent.pathPending &&
                                         agent.remainingDistance > agent.endReachedDistance &&
-                                        agent.canMove; // Check if agent is actively trying to move along a path
+                                        agent.canMove;
 
                 if (shouldDrawAiPath)
                 {
                     pathBuffer.Clear();
                     agent.GetRemainingPath(pathBuffer, out _);
 
-                    // Original logic for handling paths that don't seem to reach the agent's final destination
                     if (pathBuffer.Count > 0 && Vector3.Distance(agent.destination, pathBuffer.Last()) > 0.6f)
                     {
                         var startPoint = pathBuffer.First();
@@ -98,53 +93,49 @@ namespace AegisCore2D.UnitScripts
                         {
                             line.SetPosition(i, pathBuffer[i]);
                         }
-                        line.enabled = true;
-                        targetMarker.transform.position = agent.destination; // Marker at A* path destination
-                        targetMarker.enabled = true;
+                        targetMarker.transform.position = agent.destination;
                     }
-                    else // No points from GetRemainingPath, but conditions for shouldDrawAiPath were met
+                    else
                     {
-                        // This case is less common if shouldDrawAiPath is true.
-                        // Could happen if path is extremely short or just became valid/invalid.
-                        // Fallback to a direct line if still moving towards a distinct destination.
                         if (Vector3.Distance(transform.position, agent.destination) > agent.endReachedDistance && agent.canMove)
                         {
                             line.positionCount = 2;
                             line.SetPosition(0, transform.position);
                             line.SetPosition(1, agent.destination);
-                            line.enabled = true;
                             targetMarker.transform.position = agent.destination;
-                            targetMarker.enabled = true;
                         }
                         else
                         {
-                            line.enabled = false;
-                            targetMarker.enabled = false;
+                             line.enabled = false;
+                             targetMarker.enabled = false;
                         }
                     }
                 }
-                else // No A* path to draw (e.g., at destination, no path, path pending, or agent.canMove is false)
+                else
                 {
                     line.enabled = false;
                     targetMarker.enabled = false;
                 }
+            }
+            else
+            {
+                line.enabled = false;
+                targetMarker.enabled = false;
             }
         }
 
         public void SetVisible(bool state)
         {
             visible = state;
-            // Enabling/disabling of line and marker is now handled in Update based on conditions
-            if (!state) // If explicitly hiding, turn them off immediately
+            if (!state)
             {
                 line.enabled = false;
                 targetMarker.enabled = false;
                 line.positionCount = 0;
-                // Removed SetPathColor(defaultPathColor) to let Unit manage color persistence
             }
         }
 
-        public void SetPathColor(Color newColor)
+        private void SetPathColor(Color newColor)
         {
             line.startColor = line.endColor = newColor;
             if (targetMarker != null)
@@ -153,9 +144,26 @@ namespace AegisCore2D.UnitScripts
             }
         }
 
-        public void SetPathMode(bool isAttackMode)
+        public void SetDisplayMode(PathDisplayMode mode)
         {
-            SetPathColor(isAttackMode ? attackPathColor : defaultPathColor);
+            currentDisplayMode = mode;
+            switch (mode)
+            {
+                case PathDisplayMode.Default:
+                    SetPathColor(defaultPathColor);
+                    break;
+                case PathDisplayMode.Attack:
+                    SetPathColor(attackPathColor);
+                    break;
+                case PathDisplayMode.AttackMove:
+                    SetPathColor(attackMovePathColor);
+                    break;
+                case PathDisplayMode.None:
+                default:
+                    // Color doesn't matter if line is disabled by Update logic
+                    break;
+            }
         }
     }
 }
+// --- END OF FILE PathDisplay.cs ---

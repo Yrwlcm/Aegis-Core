@@ -1,5 +1,4 @@
-// Unit.cs
-
+// --- START OF FILE Unit.cs ---
 using System.Collections.Generic;
 using AegisCore2D.GeneralScripts;
 using UnityEngine;
@@ -28,11 +27,17 @@ namespace AegisCore2D.UnitScripts
             }
         }
 
+        [Header("Attack-Move Settings")]
+        [SerializeField] private float attackMoveScanRadiusMultiplier = 1.5f; // Множитель для радиуса сканирования
+        [SerializeField] private float minAttackMoveScanRadius = 3f;      // Минимальный радиус сканирования
+
+        [Header("Component References")]
         [SerializeField] private UnitMove moveComponent;
         [SerializeField] private AttackComponent attackComponent;
         [SerializeField] private Outline outline;
 
-        [Header("UI")] [SerializeField] private GameObject healthBarPrefab;
+        [Header("UI")]
+        [SerializeField] private GameObject healthBarPrefab;
         private HealthBarUI healthBarInstance;
         private static Canvas worldSpaceCanvas;
         private PathDisplay pathDisplay;
@@ -40,6 +45,8 @@ namespace AegisCore2D.UnitScripts
         public UnitMove MoveComponent => moveComponent;
         public AttackComponent AttackComponent => attackComponent;
         public HealthComponent Health { get; private set; }
+        public float AttackMoveScanRadiusMultiplier => attackMoveScanRadiusMultiplier; // Геттер
+        public float MinAttackMoveScanRadius => minAttackMoveScanRadius; // Геттер
 
 
         private IUnitCommand currentCommand;
@@ -48,22 +55,35 @@ namespace AegisCore2D.UnitScripts
         {
             GameObject = gameObject;
             Health = GetComponent<HealthComponent>();
-            moveComponent = GetComponent<UnitMove>(); // Ensure these are assigned
-            attackComponent = GetComponent<AttackComponent>(); // Ensure these are assigned
+            moveComponent = GetComponent<UnitMove>();
+            attackComponent = GetComponent<AttackComponent>();
             pathDisplay = GetComponent<PathDisplay>();
+            // Предполагаем, что Outline - это дочерний объект с компонентом Outline
+            // Если он на том же объекте, то GetComponent<Outline>()
+            outline = GetComponentInChildren<Outline>();
+
 
             if (Health != null)
             {
                 Health.SetTeamId(_teamIdInternal);
                 Health.OnDeath += HandleDeath;
             }
+            else
+            {
+                Debug.LogError("Unit is missing HealthComponent!", this);
+            }
 
-            // ... (rest of Awake for HP bar canvas)
-             if (worldSpaceCanvas == null)
+            if (moveComponent == null) Debug.LogError("Unit is missing UnitMove component!", this);
+            if (attackComponent == null) Debug.LogError("Unit is missing AttackComponent!", this);
+            if (pathDisplay == null) Debug.LogWarning("Unit is missing PathDisplay component (optional).", this);
+            if (outline == null) Debug.LogWarning("Unit is missing Outline component or it's not a child (optional).", this);
+
+
+            if (worldSpaceCanvas == null)
             {
                 GameObject canvasObj = GameObject.FindWithTag("HPBarWorldCanvas");
                 if (canvasObj != null) worldSpaceCanvas = canvasObj.GetComponent<Canvas>();
-                if (worldSpaceCanvas == null)
+                else
                 {
                     canvasObj = GameObject.Find("WorldSpaceUICanvas");
                     if (canvasObj != null) worldSpaceCanvas = canvasObj.GetComponent<Canvas>();
@@ -71,7 +91,7 @@ namespace AegisCore2D.UnitScripts
 
                 if (worldSpaceCanvas == null)
                 {
-                    Debug.LogError("WorldSpaceUICanvas не найден в сцене!");
+                     Debug.LogError("Critical: WorldSpaceUICanvas with tag 'HPBarWorldCanvas' or name 'WorldSpaceUICanvas' not found in scene!");
                 }
             }
 
@@ -82,30 +102,25 @@ namespace AegisCore2D.UnitScripts
 
                 if (healthBarInstance != null)
                 {
-                    healthBarInstance.SetHealthComponent(this.Health);
+                    if (Health != null) healthBarInstance.SetHealthComponent(this.Health);
+                     else Debug.LogError("Cannot set HealthComponent for HealthBarUI because Unit's Health is null.", this);
                 }
                 else
                 {
-                    Debug.LogError("Префаб HP бара не содержит HealthBarUI компонент!", this);
+                    Debug.LogError("Health Bar Prefab does not contain HealthBarUI component!", this);
                 }
             }
             else
             {
-                if (healthBarPrefab == null)
-                    Debug.LogWarning("Health Bar Prefab не назначен для юнита: " + gameObject.name, this);
+                if (healthBarPrefab == null) Debug.LogWarning("Health Bar Prefab not assigned for unit: " + gameObject.name, this);
             }
         }
 
         void LateUpdate()
         {
-            if (healthBarInstance != null && healthBarInstance.gameObject.activeSelf && Health.IsAlive)
+            if (healthBarInstance != null && Health != null && healthBarInstance.gameObject.activeSelf && Health.IsAlive)
             {
                 healthBarInstance.transform.position = transform.position;
-            }
-            else if (healthBarInstance != null && !Health.IsAlive && healthBarInstance.gameObject.activeSelf)
-            {
-                // HealthBarUI now handles its own destruction on target death
-                // healthBarInstance.gameObject.SetActive(false);
             }
         }
 
@@ -116,15 +131,13 @@ namespace AegisCore2D.UnitScripts
 
         private void HandleDeath(GameObject attacker)
         {
-            Debug.Log($"Unit {gameObject.name} is handling its death. Attacker: {attacker?.name}");
             ClearCurrentCommand();
-            // SelectionManager.RemoveUnitForTeam(this, Team); // Moved to OnDestroy for robustness
             if (Selected) Deselect();
         }
 
         private void Update()
         {
-            if (!Health.IsAlive)
+            if (Health == null || !Health.IsAlive)
             {
                 if (currentCommand != null) ClearCurrentCommand();
                 return;
@@ -141,16 +154,23 @@ namespace AegisCore2D.UnitScripts
                     else
                     {
                         currentCommand.Execute(this);
-                        // If unit is now stationary attacking, path display will still show line to target
+                    }
+                }
+                else if (currentCommand is AttackMoveCommand) // AttackMoveCommand сам обрабатывает переход в AttackCommand
+                {
+                    currentCommand.Execute(this);
+                }
+                else if (currentCommand is MoveCommand)
+                {
+                    currentCommand.Execute(this);
+                    if (MoveComponent != null && MoveComponent.HasReachedDestination())
+                    {
+                        ClearCurrentCommand();
                     }
                 }
                 else
                 {
-                    currentCommand.Execute(this);
-                    if (currentCommand is MoveCommand && MoveComponent.HasReachedDestination())
-                    {
-                        ClearCurrentCommand();
-                    }
+                    currentCommand.Execute(this); // Для других возможных команд
                 }
             }
         }
@@ -159,60 +179,68 @@ namespace AegisCore2D.UnitScripts
         {
             if (pathDisplay == null || !pathDisplay.isActiveAndEnabled) return;
 
-            // This method sets the *state* for PathDisplay.
-            // PathDisplay.Update() will use this state if 'visible' is true.
+            if (!Selected)
+            {
+                pathDisplay.SetVisible(false);
+                return;
+            }
+            pathDisplay.SetVisible(true);
+
             if (currentCommand is AttackCommand attackCmd && attackCmd.IsTargetStillValid())
             {
-                pathDisplay.SetPathMode(true); // Sets color to red
+                pathDisplay.SetDisplayMode(PathDisplay.PathDisplayMode.Attack);
                 pathDisplay.SetAttackTargetOverride(attackCmd.GetTarget());
+            }
+            else if (currentCommand is AttackMoveCommand)
+            {
+                pathDisplay.SetDisplayMode(PathDisplay.PathDisplayMode.AttackMove);
+                pathDisplay.SetAttackTargetOverride(null);
             }
             else if (currentCommand is MoveCommand)
             {
-                pathDisplay.SetPathMode(false); // Sets color to default
+                pathDisplay.SetDisplayMode(PathDisplay.PathDisplayMode.Default);
                 pathDisplay.SetAttackTargetOverride(null);
             }
-            else // No command or an unknown command type
+            else
             {
-                pathDisplay.SetPathMode(false); // Default color
-                pathDisplay.SetAttackTargetOverride(null); // No specific attack target
+                pathDisplay.SetDisplayMode(PathDisplay.PathDisplayMode.None);
+                pathDisplay.SetAttackTargetOverride(null);
             }
         }
 
         public void SetCommand(IUnitCommand cmd)
         {
-            if (!Health.IsAlive) return;
+            if (Health == null || !Health.IsAlive) return;
 
+            // Оптимизация: не переназначать идентичную команду
             if (currentCommand is MoveCommand oldMoveCmd && cmd is MoveCommand newMoveCmd)
             {
-                if (Vector3.Distance(MoveComponent.GetDestination(), newMoveCmd.GetTargetPosition_DEBUG()) < 0.1f)
-                {
-                    return;
-                }
+                if (MoveComponent != null && Vector3.Distance(MoveComponent.GetDestination(), newMoveCmd.GetTargetPosition_DEBUG()) < 0.1f) return;
             }
-
             if (currentCommand is AttackCommand oldAttackCmd && cmd is AttackCommand newAttackCmd)
             {
-                if (oldAttackCmd.GetTarget() == newAttackCmd.GetTarget())
-                {
-                    return;
-                }
+                if (oldAttackCmd.GetTarget() == newAttackCmd.GetTarget()) return;
             }
-            
+            if (currentCommand is AttackMoveCommand oldAttackMoveCmd && cmd is AttackMoveCommand newAttackMoveCmd)
+            {
+                 if (Vector3.Distance(oldAttackMoveCmd.GetTargetPosition_DEBUG(), newAttackMoveCmd.GetTargetPosition_DEBUG()) < 0.1f) return;
+            }
+
             currentCommand = cmd;
-            UpdatePathDisplayForCurrentCommand(); // Update path display based on new command
+            UpdatePathDisplayForCurrentCommand();
         }
 
         public void ClearCurrentCommand()
         {
             if (currentCommand != null && currentCommand is AttackCommand)
             {
-                if (MoveComponent.IsMoving())
+                if (MoveComponent != null && MoveComponent.IsMoving())
                 {
-                    MoveComponent.Stop();
+                    MoveComponent.Stop(); // Если отменяем атаку, и юнит двигался к ней, останавливаем.
                 }
             }
             currentCommand = null;
-            UpdatePathDisplayForCurrentCommand(); // Update path display as command is cleared
+            UpdatePathDisplayForCurrentCommand();
         }
 
         private void OnDestroy()
@@ -226,7 +254,7 @@ namespace AegisCore2D.UnitScripts
 
         public void EnableOutline()
         {
-            if (Health.IsAlive) // Only show outline if alive
+            if (outline != null && Health != null && Health.IsAlive)
             {
                 outline.Show(true);
                 OutlineEnabled = true;
@@ -235,31 +263,35 @@ namespace AegisCore2D.UnitScripts
 
         public void DisableOutline()
         {
-            outline.Show(false); // Always allow disabling outline
-            OutlineEnabled = false;
+            if (outline != null)
+            {
+                outline.Show(false);
+                OutlineEnabled = false;
+            }
         }
 
         public void Select()
         {
-            if (!Health.IsAlive) return;
+            if (Health == null || !Health.IsAlive) return;
             EnableOutline();
             Selected = true;
-
-            if (pathDisplay != null)
-            {
-                pathDisplay.SetVisible(true); // Make it visible
-                UpdatePathDisplayForCurrentCommand(); // Then update its content based on current command
-            }
+            UpdatePathDisplayForCurrentCommand();
         }
 
         public void Deselect()
         {
-            DisableOutline(); // This will also hide outline if unit died while selected
+            DisableOutline();
             Selected = false;
             if (pathDisplay != null)
             {
                 pathDisplay.SetVisible(false);
             }
         }
+        
+        public IUnitCommand CurrentCommand_DEBUG()
+        {
+            return currentCommand;
+        }
     }
 }
+// --- END OF FILE Unit.cs ---

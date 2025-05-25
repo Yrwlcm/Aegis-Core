@@ -1,9 +1,11 @@
+// --- START OF FILE SelectionManager.cs ---
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using AegisCore2D.UnitScripts;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 namespace AegisCore2D.GeneralScripts
 {
@@ -11,63 +13,195 @@ namespace AegisCore2D.GeneralScripts
     {
         public static Dictionary<int, SelectionManager> Instances { get; } = new();
 
-        [Header("References")] [SerializeField]
-        Camera cam;
-
+        [Header("References")]
+        [SerializeField] Camera cam;
         [SerializeField] RectTransform boxVisual;
 
-        [Header("Filters")] [SerializeField] LayerMask selectableMask; // союзные юниты
-        [SerializeField] LayerMask attackableMask; // враги/объекты
+        [Header("Filters")]
+        [SerializeField] LayerMask selectableMask;
+        [SerializeField] LayerMask attackableMask;
         [SerializeField] int teamId;
         [SerializeField] bool isPlayerManager;
 
-        readonly HashSet<ISelectable> pool = new(); // все доступные юниты
+        readonly HashSet<ISelectable> pool = new();
         readonly HashSet<ISelectable> dragBuffer = new();
         readonly HashSet<Unit> selected = new();
 
         Rect dragRect;
         Vector2 dragStart;
-        bool dragging;
+        bool dragging = false; // Явно инициализируем false
 
         const float dragThreshold = 40f;
 
-        /* ─── singleton ─── */
+        private InputSystem_Actions inputActions;
+        private bool attackMoveModeActive = false;
+
         void Awake()
         {
             if (Instances.TryGetValue(teamId, out var inst) && inst != this)
+            {
                 Destroy(gameObject);
+                return;
+            }
+            Instances[teamId] = this;
+
+            inputActions = new InputSystem_Actions();
+
+            if (boxVisual != null) // Убедимся, что boxVisual скрыт при старте
+            {
+                boxVisual.gameObject.SetActive(false);
+            }
             else
-                Instances[teamId] = this;
+            {
+                Debug.LogError("BoxVisual (RectTransform for selection box) is not assigned in SelectionManager.", this);
+            }
         }
 
-        /* ─── main loop ─── */
+        private void OnEnable()
+        {
+            inputActions?.Enable(); // Включаем весь asset, а не только Player map, если есть другие карты
+            if (inputActions != null && inputActions.Player.AttackMoveModifier != null)
+            {
+                inputActions.Player.AttackMoveModifier.performed += OnAttackMoveModifierPerformed;
+            }
+        }
+
+        private void OnDisable()
+        {
+            inputActions?.Disable();
+            if (inputActions != null && inputActions.Player.AttackMoveModifier != null)
+            {
+                inputActions.Player.AttackMoveModifier.performed -= OnAttackMoveModifierPerformed;
+            }
+        }
+
+        private void OnAttackMoveModifierPerformed(InputAction.CallbackContext context)
+        {
+            // Не включать режим, если никто не выбран и мы пытаемся его *включить*
+            if (selected.Count == 0 && !attackMoveModeActive)
+            {
+                 Debug.Log("Attack-Move Mode: Cannot activate, no units selected.");
+                return;
+            }
+
+            attackMoveModeActive = !attackMoveModeActive;
+            Debug.Log("Attack-Move Mode: " + (attackMoveModeActive ? "ON" : "OFF") + " (Toggled by key)");
+
+            if (!attackMoveModeActive)
+            {
+                // Если режим был выключен клавишей 'A' (а не ПКМ),
+                // и у юнитов была команда AttackMove, ее можно отменить
+                // или оставить - зависит от желаемого поведения.
+                // Пока оставим как есть, чтобы не отменять команду, если пользователь просто передумал.
+            }
+        }
+
+        public LayerMask GetAttackableMask_DEBUG()
+        {
+            return attackableMask;
+        }
+
         void Update()
         {
             if (!isPlayerManager) return;
-
-            HandleSelectionInput();
-            HandleCommandInput();
+            
+            HandleLeftMouseInput();
+            HandleRightMouseInput();
         }
 
-        /* ─── selection input ─── */
-        void HandleSelectionInput()
+        void HandleLeftMouseInput()
         {
-            if (Mouse.current.leftButton.wasPressedThisFrame) BeginDrag();
-            if (Mouse.current.leftButton.isPressed && dragging) UpdateDrag();
-            if (Mouse.current.leftButton.wasReleasedThisFrame) EndDrag();
+            if (Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                BeginDrag();
+            }
+            else if (Mouse.current.leftButton.isPressed)
+            {
+                if (dragging) UpdateDrag();
+            }
+            else if (Mouse.current.leftButton.wasReleasedThisFrame)
+            {
+                if (dragging) EndDrag();
+            }
         }
+
+        void HandleRightMouseInput()
+        {
+            if (Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                if (selected.Count == 0) return;
+
+                Vector2 screen = Mouse.current.position.ReadValue();
+                Vector2 world = cam.ScreenToWorldPoint(screen);
+
+                if (attackMoveModeActive)
+                {
+                    Debug.Log($"Issuing ATTACK-MOVE command to {world}");
+                    BroadcastAttackMove(world);
+                    attackMoveModeActive = false; // Сбрасываем режим после команды
+                    Debug.Log("Attack-Move Mode: OFF (Command issued)");
+                }
+                else
+                {
+                    Collider2D hitAttackable = Physics2D.OverlapPoint(world, attackableMask);
+                    if (hitAttackable != null)
+                    {
+                        IDamageable damageableTarget = hitAttackable.GetComponent<IDamageable>();
+                        if (damageableTarget == null) damageableTarget = hitAttackable.GetComponentInParent<IDamageable>();
+
+                        if (damageableTarget != null && damageableTarget.IsAlive)
+                        {
+                            bool isOwnTeamTarget = false;
+                            Unit firstSelectedUnit = selected.FirstOrDefault();
+                            if (firstSelectedUnit != null && firstSelectedUnit.Health != null &&
+                                firstSelectedUnit.Team == damageableTarget.TeamId && damageableTarget.TeamId != -1)
+                            {
+                                isOwnTeamTarget = true;
+                            }
+
+                            if (!isOwnTeamTarget)
+                            {
+                                Debug.Log($"Commanding selected units to ATTACK {damageableTarget.MyGameObject.name}");
+                                BroadcastAttack(damageableTarget);
+                                return;
+                            }
+                        }
+                    }
+                    Debug.Log($"Commanding selected units to MOVE to {world}");
+                    BroadcastMove(world);
+                }
+            }
+        }
+
 
         void BeginDrag()
         {
+            // Если режим Attack-Move активен, ЛКМ не должен начинать выделение.
+            // Он может быть использован для других целей или просто игнорироваться.
+            // Сейчас мы его просто игнорируем для выделения.
+            if (attackMoveModeActive)
+            {
+                // Можно добавить логику, если A+ЛКМ что-то делает, или просто выйти.
+                // Пока выходим, чтобы не мешать.
+                return;
+            }
+
             if (!Keyboard.current.leftShiftKey.isPressed)
+            {
                 DeselectAll();
+            }
 
             dragStart = Mouse.current.position.ReadValue();
             dragging = true;
 
-            boxVisual.gameObject.SetActive(true);
-            boxVisual.sizeDelta = Vector2.zero;
-            dragRect = new Rect();
+            if (boxVisual != null)
+            {
+                boxVisual.gameObject.SetActive(true);
+                boxVisual.anchoredPosition = dragStart; // Начинаем с точки клика
+                boxVisual.sizeDelta = Vector2.zero;
+            }
+            dragRect = new Rect(dragStart, Vector2.zero); // Инициализируем Rect
+            dragBuffer.Clear(); // Очищаем буфер перед новым выделением
         }
 
         void UpdateDrag()
@@ -76,30 +210,42 @@ namespace AegisCore2D.GeneralScripts
             Vector2 min = Vector2.Min(dragStart, cur);
             Vector2 max = Vector2.Max(dragStart, cur);
 
-            boxVisual.anchoredPosition = min;
-            boxVisual.sizeDelta = max - min;
+            if (boxVisual != null)
+            {
+                boxVisual.anchoredPosition = min;
+                boxVisual.sizeDelta = max - min;
+            }
 
             dragRect.min = min;
             dragRect.max = max;
 
-            foreach (var sel in pool) // sel это ISelectable
+            // Обновление dragBuffer
+            // Чтобы избежать многократного Add/Remove, можно сделать так:
+            // 1. Очистить dragBuffer от тех, кто больше не выделен
+            // 2. Добавить новых
+            // Но для простоты пока оставим старый подход, он не должен быть причиной зависания.
+
+            foreach (var sel in pool)
             {
-                Vector2 scr = cam.WorldToScreenPoint(sel.GameObject.transform.position);
-                if (dragRect.Contains(scr))
+                if (sel == null || sel.GameObject == null) continue;
+                Vector2 scrPos = cam.WorldToScreenPoint(sel.GameObject.transform.position);
+                if (dragRect.Contains(scrPos))
                 {
-                    // Подсвечиваем только своих юнитов во время драггинга
                     if (sel.Team == teamId)
                     {
-                        if (dragBuffer.Add(sel)) sel.EnableOutline();
+                        if (!dragBuffer.Contains(sel)) // Добавляем, только если еще нет
+                        {
+                            dragBuffer.Add(sel);
+                            sel.EnableOutline();
+                        }
                     }
                 }
-                else // Если юнит не в прямоугольнике выделения
+                else // Юнит не в прямоугольнике
                 {
-                    if (dragBuffer.Remove(sel)) // Если он был в буфере
+                    if (dragBuffer.Contains(sel)) // Если был в буфере, удаляем
                     {
-                        // Снимаем аутлайн только если он не в основном списке выбранных `selected`
-                        // Иначе, если он уже был выбран до драггинга, аутлайн снимется зря.
-                        // Unit должен быть приводимым к Unit, чтобы проверить selected.Contains
+                        dragBuffer.Remove(sel);
+                        // Снимаем аутлайн, только если он не в основном списке 'selected'
                         Unit unitSel = sel as Unit;
                         if (unitSel == null || !selected.Contains(unitSel))
                         {
@@ -112,150 +258,209 @@ namespace AegisCore2D.GeneralScripts
 
         void EndDrag()
         {
-            dragging = false;
-            boxVisual.gameObject.SetActive(false);
+            if (boxVisual != null)
+            {
+                boxVisual.gameObject.SetActive(false);
+            }
 
-            if (boxVisual.sizeDelta.magnitude < dragThreshold)
+            if (Vector2.Distance(dragStart, Mouse.current.position.ReadValue()) < dragThreshold) // Проверка на "клик"
+            {
                 ClickSelect();
-            else
+            }
+            else // Это было выделение рамкой
+            {
                 BoxSelect();
+            }
 
+            // Очистка после выделения
+            foreach (var item in pool) // Снимаем подсветку с тех, кто был в dragBuffer, но не попал в selected
+            {
+                if (item != null && !dragBuffer.Contains(item) && item.OutlineEnabled)
+                {
+                     Unit unitItem = item as Unit;
+                     if (unitItem == null || !selected.Contains(unitItem))
+                     {
+                        item.DisableOutline();
+                     }
+                }
+            }
             dragBuffer.Clear();
+            dragging = false; // Важно сбросить флаг
         }
+        
+        void CancelDrag() // Новый метод для принудительной отмены драга
+        {
+            if (boxVisual != null)
+            {
+                boxVisual.gameObject.SetActive(false);
+            }
+            // Снимаем аутлайны с тех, кто был в буфере
+            foreach (var item in dragBuffer)
+            {
+                if (item != null)
+                {
+                    Unit unitItem = item as Unit;
+                    if (unitItem == null || !selected.Contains(unitItem)) // Не снимать, если уже в selected
+                    {
+                        item.DisableOutline();
+                    }
+                }
+            }
+            dragBuffer.Clear();
+            dragging = false;
+            Debug.Log("Drag Canceled");
+        }
+
 
         void ClickSelect()
         {
+             // Если режим Attack-Move активен, ЛКМ не должен ничего выделять
+            if (attackMoveModeActive) return;
+
             Vector2 screen = Mouse.current.position.ReadValue();
             Vector2 world = cam.ScreenToWorldPoint(screen);
             Collider2D hit = Physics2D.OverlapPoint(world, selectableMask);
-            if (!hit) return;
 
-            var sel = hit.GetComponent<ISelectable>();
-            if (sel?.Team != teamId) return;
+            bool shiftPressed = Keyboard.current.leftShiftKey.isPressed;
 
-            ToggleSelect((Unit)sel);
+            if (hit != null)
+            {
+                var sel = hit.GetComponent<ISelectable>();
+                if (sel != null && sel.Team == teamId)
+                {
+                    ToggleSelect(sel as Unit, shiftPressed);
+                    return; // Выделили/сняли выделение, выходим
+                }
+            }
+
+            // Если кликнули на пустое место и Shift не нажат, снимаем все выделения
+            if (!shiftPressed)
+            {
+                DeselectAll();
+            }
         }
 
         void BoxSelect()
         {
-            foreach (var s in dragBuffer)
+            // Режим Attack-Move не должен влиять на выделение рамкой
+            bool shiftPressed = Keyboard.current.leftShiftKey.isPressed;
+            if (!shiftPressed) // Если шифт не нажат, сначала снимаем все текущие выделения
             {
-                if (s.Team != teamId) // this.teamId - это teamId текущего SelectionManager'а
-                    continue;
-
-                Select((Unit)s);
+                DeselectAll();
             }
+
+            foreach (var s in dragBuffer) // dragBuffer уже содержит только юнитов нашей команды
+            {
+                Select(s as Unit); // Select уже добавляет в selected и включает аутлайн
+            }
+            // dragBuffer будет очищен в EndDrag
         }
 
-        void HandleCommandInput()
+        void ToggleSelect(Unit u, bool shiftIsPressed) // Изменен для явной передачи shift
         {
-            if (Mouse.current.rightButton.wasPressedThisFrame)
+            if (u == null || u.Health == null || !u.Health.IsAlive) return;
+
+            if (shiftIsPressed)
             {
-                if (selected.Count == 0) return;
-
-                Vector2 screen = Mouse.current.position.ReadValue();
-                Vector2 world = cam.ScreenToWorldPoint(screen);
-
-                // Проверяем, есть ли под курсором объект для атаки
-                // Используем Physics2D.OverlapPoint для поиска коллайдера
-                Collider2D
-                    hitAttackable =
-                        Physics2D.OverlapPoint(world, attackableMask); // attackableMask должна быть настроена на врагов
-
-                if (hitAttackable != null)
+                if (selected.Contains(u))
                 {
-                    IDamageable damageableTarget = hitAttackable.GetComponent<IDamageable>();
-                    // Также можно проверить GetComponentInParent или GetComponentInChildren, если IDamageable не на том же объекте, что и коллайдер.
-
-                    if (damageableTarget != null && damageableTarget.IsAlive)
-                    {
-                        // Проверяем, что цель не из нашей команды (если это не дружественный огонь :))
-                        // Это дублирует проверку в AttackComponent, но здесь это для UI/UX - чтобы курсор менялся и т.д.
-                        bool isOwnTeamTarget = false;
-                        if (selected.Count > 0) // Берем команду первого выделенного юнита для сравнения
-                        {
-                            Unit firstSelectedUnit = selected.First(); // LINQ, нужно using System.Linq;
-                            if (firstSelectedUnit.Team == damageableTarget.TeamId &&
-                                damageableTarget.TeamId != -1) // -1 может быть нейтральной командой
-                            {
-                                isOwnTeamTarget = true;
-                            }
-                        }
-
-                        if (!isOwnTeamTarget)
-                        {
-                            Debug.Log($"Commanding selected units to attack {damageableTarget.MyGameObject.name}");
-                            BroadcastAttack(damageableTarget);
-                            return; // Команда атаки выдана, выходим
-                        }
-                        // Если цель своя, то можно либо ничего не делать, либо выдать команду Move (например, следовать за союзником)
-                        // Пока просто проигнорируем и перейдем к MoveCommand ниже, если это был союзник
-                    }
+                    Deselect(u);
                 }
-
-                // Если не кликнули по врагу (или кликнули по союзнику/пустому месту), даем команду Move
-                //Debug.Log($"Commanding selected units to move to {world}");
-                BroadcastMove(world, (targetCenter, unit, index) => targetCenter);
+                else
+                {
+                    Select(u);
+                }
             }
-        }
-
-        void BroadcastMove(Vector2 target, Func<Vector2, Unit, int, Vector2> modifyTarget)
-        {
-            var index = 0;
-            foreach (Unit u in selected)
-                u.SetCommand(new MoveCommand(modifyTarget(target, u, index++)));
-        }
-
-        void BroadcastAttack(IDamageable target)
-        {
-            foreach (Unit u in selected)
-                u.SetCommand(new AttackCommand(u, target)); // Передаем самого юнита и цель
-        }
-
-        /* ─── selection utilities ─── */
-        void ToggleSelect(Unit u)
-        {
-            if (selected.Contains(u)) Deselect(u);
-            else Select(u);
+            else // Shift не нажат, стандартное выделение одного
+            {
+                DeselectAll();
+                Select(u);
+            }
         }
 
         void Select(params Unit[] units)
         {
             foreach (var unit in units)
             {
-                unit.Select();
+                if (unit != null && unit.Health != null && unit.Health.IsAlive)
+                {
+                    if (selected.Add(unit)) // Add возвращает true, если элемент был добавлен (т.е. его не было)
+                    {
+                        unit.Select(); // Вызываем метод Select самого юнита
+                    }
+                }
             }
-
-            selected.UnionWith(units);
         }
 
         void Deselect(params Unit[] units)
         {
             foreach (var unit in units)
             {
-                unit.Deselect();
+                if (unit != null)
+                {
+                    if (selected.Remove(unit)) // Remove возвращает true, если элемент был удален
+                    {
+                        unit.Deselect(); // Вызываем метод Deselect самого юнита
+                    }
+                }
             }
-
-            selected.ExceptWith(units);
         }
 
         void DeselectAll()
         {
-            Deselect(selected.ToArray());
+            // Копируем в массив, чтобы избежать ошибки изменения коллекции во время итерации
+            Unit[] currentlySelected = selected.ToArray();
+            foreach (Unit u in currentlySelected)
+            {
+                Deselect(u); // Deselect уже удалит из selected и вызовет u.Deselect()
+            }
+            // selected.Clear(); // После цикла selected должен быть пустым
+        }
+
+        // BroadcastAttackMove, BroadcastMove, BroadcastAttack остаются без изменений
+        void BroadcastAttackMove(Vector2 targetPoint)
+        {
+            foreach (Unit u in selected)
+            {
+                if (u == null || u.AttackComponent == null) continue;
+                u.SetCommand(new AttackMoveCommand(targetPoint));
+            }
+        }
+
+        void BroadcastMove(Vector2 target)
+        {
+            foreach (Unit u in selected)
+            {
+                if (u == null) continue;
+                u.SetCommand(new MoveCommand(target));
+            }
+        }
+
+        void BroadcastAttack(IDamageable target)
+        {
+            foreach (Unit u in selected)
+            {
+                if (u == null) continue;
+                u.SetCommand(new AttackCommand(u, target));
+            }
         }
 
         public static void RegisterUnitForTeam(ISelectable unit, int team)
         {
             if (!Instances.TryGetValue(team, out var mgr)) return;
-            mgr.pool.Add(unit);
+            if (unit != null) mgr.pool.Add(unit);
         }
 
         public static void RemoveUnitForTeam(ISelectable unit, int team)
         {
-            if (!Instances.TryGetValue(team, out var mgr)) return;
+            if (!Instances.TryGetValue(team, out var mgr) || unit == null) return;
             mgr.pool.Remove(unit);
-            mgr.selected.Remove((Unit)unit);
+            if (unit is Unit u)
+            {
+                mgr.selected.Remove(u);
+            }
             mgr.dragBuffer.Remove(unit);
         }
     }
 }
+// --- END OF FILE SelectionManager.cs ---
