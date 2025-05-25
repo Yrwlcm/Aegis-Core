@@ -11,7 +11,7 @@ namespace AegisCore2D.UnitScripts
 
         // TeamID is now primarily managed by the Unit class if present,
         // but HealthComponent needs its own copy for IDamageable interface and independent operation.
-        private int _teamId; 
+        [SerializeField]private int _teamId; 
 
         public event Action<float, float> OnHealthChanged; // currentHealth, maxHealth
         public event Action<GameObject> OnDeath;           // Attacker's GameObject

@@ -135,6 +135,10 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5661507692526318886, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: m_SortingOrder
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6755962195548524677, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
       propertyPath: m_Radius
       value: 0.3777066
