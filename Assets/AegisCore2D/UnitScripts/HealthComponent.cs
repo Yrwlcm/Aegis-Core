@@ -74,14 +74,13 @@ namespace AegisCore2D.UnitScripts
 
         private void Die(GameObject attacker)
         {
-            // Debug.Log($"{gameObject.name} has died."); // Optional
-            OnDeath?.Invoke(attacker); // Notify listeners (e.g., Unit, HealthBarUI)
-            
-            // The GameObject's destruction is usually handled by the Unit itself after OnDeath,
-            // or by another system that listens to OnDeath.
-            // If HealthComponent can exist without a Unit, then uncommenting Destroy might be needed.
-            // For now, assume Unit handles its own destruction.
-            // Destroy(gameObject, 0.1f); 
+            // Debug.Log($"{gameObject.name} has died."); // Опционально
+            OnDeath?.Invoke(attacker); // Оповещаем подписчиков (включая Unit)
+
+            // gameObject.SetActive(false); // Простой вариант
+            // Destroy(gameObject, 0.1f); // <--- ЭТУ СТРОКУ НУЖНО УДАЛИТЬ ИЛИ ЗАКОММЕНТИРОВАТЬ
+            //      Теперь Unit.cs будет сам решать, когда уничтожать объект
+            //      после проигрывания анимации смерти.
         }
 
         public void Initialize(float newMaxHealth, int newTeamId)

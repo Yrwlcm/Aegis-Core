@@ -1,3 +1,4 @@
+using System.Collections;
 using AegisCore2D.GeneralScripts;
 using UnityEngine;
 
@@ -38,7 +39,10 @@ namespace AegisCore2D.UnitScripts
         [SerializeField] private GameObject healthBarPrefab;
         private HealthBarUI healthBarInstance;
         private static Canvas worldSpaceCanvas; // Shared canvas for all unit health bars
+        private static readonly int IsWalking = Animator.StringToHash("IsWalking");
+        private static readonly int Shoot = Animator.StringToHash("Shoot");
         private PathDisplay pathDisplay;
+        private Animator animator;
 
         public UnitMove MoveComponent => moveComponent;
         public AttackComponent AttackComponent => attackComponent;
@@ -70,6 +74,12 @@ namespace AegisCore2D.UnitScripts
             if (attackComponent == null) Debug.LogError("Unit is missing AttackComponent!", this);
             // pathDisplay and outline logs are optional based on their necessity
 
+            animator = GetComponent<Animator>();
+            if (animator == null)
+            {
+                Debug.LogWarning($"Юнит {gameObject.name} не имеет компонента Animator!", this);
+            }
+            
             SetupHealthBar();
         }
         
@@ -93,6 +103,11 @@ namespace AegisCore2D.UnitScripts
                 }
                 else Debug.LogError("Health Bar Prefab missing HealthBarUI component!", healthBarPrefab);
             }
+            
+            if (animator != null && Health.IsAlive) // Управляем анимациями, только если аниматор есть и юнит жив
+            {
+                UpdateAnimations();
+            }
             // else if (healthBarPrefab == null) Debug.LogWarning($"Health Bar Prefab not assigned for unit: {gameObject.name}", this); // Optional
         }
 
@@ -109,16 +124,98 @@ namespace AegisCore2D.UnitScripts
         private void Start()
         {
             SelectionManager.RegisterUnitForTeam(this, Team);
+            
+            if (AttackComponent != null)
+            {
+                AttackComponent.OnAttackPerformed += HandleAttackPerformed; // Подписываемся
+            }
+        }
+        
+        private void HandleAttackPerformed(IDamageable target) // IDamageable может не использоваться здесь
+        {
+            TriggerShootAnimation();
+        }
+        
+        private void UpdateAnimations()
+        {
+            // Анимация ходьбы
+            if (moveComponent != null)
+            {
+                bool isCurrentlyMoving = moveComponent.IsMoving(); // IsMoving() из UnitMove.cs
+                animator.SetBool(IsWalking, isCurrentlyMoving);
+            }
+            else
+            {
+                animator.SetBool(IsWalking, false); // Если нет компонента движения, считаем, что не идет
+            }
+        }
+        
+        public void TriggerShootAnimation()
+        {
+            if (animator != null && Health.IsAlive)
+            {
+                animator.SetTrigger(Shoot);
+            }
         }
 
-        private void HandleDeath(GameObject attacker)
+        private void HandleDeath(GameObject attacker) // GameObject attacker - кто нанес последний удар
         {
+            // 1. Запускаем анимацию смерти
+            if (animator != null)
+            {
+                animator.SetTrigger("Die"); // Используем триггер "Die"
+                // Если бы мы хотели проиграть конкретный стейт без настроенных переходов:
+                // animator.Play("Unit_Death"); // Это проиграет стейт с именем "Unit_Death" из нулевого слоя
+            }
+
+            // 2. Очищаем текущую команду, если была
             ClearCurrentCommand();
-            if (Selected) Deselect(); // Deselect on death
-            // Unit destruction can be handled here or by a spawner/manager listening to OnDeath
-            // For simplicity, let's assume unit is destroyed. If pooling, set inactive.
-            SelectionManager.RemoveUnitForTeam(this, Team); // Ensure removal from selection pools
-            Destroy(gameObject, 0.1f); // Delay slightly for other systems to react
+
+            // 3. Снимаем выделение, если был выделен
+            if (Selected) Deselect();
+
+            // 4. Сообщаем SelectionManager'у, что юнит удален (это уже должно быть в OnDestroy, но при смерти тоже можно, если объект не сразу уничтожается)
+            // SelectionManager.RemoveUnitForTeam(this, Team); // Если объект будет жить некоторое время для анимации
+
+            // 5. Деактивируем компоненты, которые могут мешать анимации смерти или продолжать логику
+            if (moveComponent != null) moveComponent.Stop(); // Останавливаем движение
+            if (AttackComponent != null) AttackComponent.enabled = false; // Отключаем возможность атаковать
+            if (GetComponent<Collider2D>() != null) GetComponent<Collider2D>().enabled = false; // Отключаем коллайдер, чтобы не мешал
+            // Отключаем AI, если есть
+            var aiComponent = GetComponent<AegisCore2D.AI.BasicUnitAI>();
+            if (aiComponent != null) aiComponent.enabled = false;
+
+
+            // 6. Запускаем корутину для уничтожения объекта ПОСЛЕ проигрывания анимации
+            StartCoroutine(DestroyAfterAnimation(GetAnimationLength("Unit_Death")));
+        }
+        
+        private float GetAnimationLength(string animationName)
+        {
+            if (animator == null) return 0f;
+
+            RuntimeAnimatorController ac = animator.runtimeAnimatorController;
+            for (int i = 0; i < ac.animationClips.Length; i++)
+            {
+                if (ac.animationClips[i].name == animationName)
+                {
+                    return ac.animationClips[i].length / animator.speed; // Учитываем скорость аниматора
+                }
+            }
+            Debug.LogWarning($"Длина анимации '{animationName}' не найдена.");
+            return 1f; // Возвращаем значение по умолчанию, если не нашли
+        }
+
+        private IEnumerator DestroyAfterAnimation(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+
+            // Убедимся, что объект еще существует (на всякий случай)
+            if (this != null && gameObject != null)
+            {
+                // Отписка от SelectionManager происходит в OnDestroy, который вызовется при Destroy(gameObject)
+                Destroy(gameObject);
+            }
         }
 
         private void Update()
@@ -130,6 +227,10 @@ namespace AegisCore2D.UnitScripts
             }
 
             ExecuteCurrentCommand();
+            if (animator != null && Health.IsAlive) // Управляем анимациями, только если аниматор есть и юнит жив
+            {
+                UpdateAnimations();
+            }
         }
 
         private void ExecuteCurrentCommand()
@@ -238,6 +339,11 @@ namespace AegisCore2D.UnitScripts
             if(Health == null || Health.IsAlive) // If not already handled by HandleDeath (i.e. unit destroyed externally while alive)
             {
                  SelectionManager.RemoveUnitForTeam(this, Team);
+            }
+            
+            if (AttackComponent != null)
+            {
+                AttackComponent.OnAttackPerformed -= HandleAttackPerformed;
             }
         }
 
