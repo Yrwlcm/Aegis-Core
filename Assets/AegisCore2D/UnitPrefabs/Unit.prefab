@@ -327,7 +327,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   line: {fileID: 2644989122194197073}
-  lineWidth: 0.1
+  lineWidth: 0.12
   targetMarker: {fileID: 2008208381768278733}
   markerSize: 0.18
   defaultPathColor: {r: 0, g: 1, b: 1, a: 1}
@@ -341,7 +341,7 @@ LineRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2597344787920441252}
-  m_Enabled: 0
+  m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -387,7 +387,16 @@ LineRenderer:
       m_Curve:
       - serializedVersion: 3
         time: 0
-        value: 0.1607151
+        value: 0.04
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 0.04
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -430,7 +439,7 @@ LineRenderer:
     numCornerVertices: 0
     numCapVertices: 0
     alignment: 1
-    textureMode: 2
+    textureMode: 3
     textureScale: {x: 1, y: 1}
     shadowBias: 0.5
     generateLightingData: 0
@@ -467,6 +476,9 @@ MonoBehaviour:
   attackRange: 1.5
   attackCooldown: 1.5
   isRanged: 0
+  lineOfSightMask:
+    serializedVersion: 2
+    m_Bits: 0
   projectilePrefab: {fileID: 0}
   projectileSpawnPoint: {fileID: 0}
   projectileSpeed: 10

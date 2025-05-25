@@ -166,19 +166,19 @@ namespace AegisCore2D.GameManagement
             for (int i = 0; i < wave.enemyCount; i++)
             {
                 if (currentGameState == GameState.Defeat || currentGameState == GameState.Victory) yield break;
-                SpawnEnemy(wave.enemyPrefab, spawnPointToUse);
+                SpawnEnemy(wave.enemyPrefab, spawnPointToUse, FormationUtility.GetSpiralOffset(i, 1.5f));
                 yield return new WaitForSeconds(wave.spawnInterval);
             }
         }
 
-        private void SpawnEnemy(GameObject enemyPrefab, Transform spawnPoint)
+        private void SpawnEnemy(GameObject enemyPrefab, Transform spawnPoint, Vector3 offset)
         {
             if (enemyPrefab == null)
             {
                 Debug.LogError("Попытка заспаунить врага с пустым префабом!");
                 return;
             }
-            GameObject enemyGO = Instantiate(enemyPrefab, spawnPoint.position, spawnPoint.rotation);
+            GameObject enemyGO = Instantiate(enemyPrefab, spawnPoint.position + offset, spawnPoint.rotation);
             Unit enemyUnit = enemyGO.GetComponent<Unit>();
 
             if (enemyUnit != null)
