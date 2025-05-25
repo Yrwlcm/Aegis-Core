@@ -322,7 +322,15 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Wasp_0: -3100587905405979391
+      Wasp_1: -202273061664295752
+      Wasp_2: -8630741147279505954
+      Wasp_3: -5019629007719168259
+      Wasp_4: 8042016122642760018
+      Wasp_5: -6572935084018573952
+      Wasp_6: -5316980723501727432
+      Wasp_7: -1133350379456374480
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

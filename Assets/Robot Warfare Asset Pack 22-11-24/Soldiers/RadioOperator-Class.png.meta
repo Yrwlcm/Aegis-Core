@@ -597,7 +597,26 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      RadioOperator-Class_0: -6846869337993207789
+      RadioOperator-Class_1: -7474514042056018072
+      RadioOperator-Class_10: -7317689742097998994
+      RadioOperator-Class_11: -1799673785967287335
+      RadioOperator-Class_12: -1630891319230546470
+      RadioOperator-Class_13: 2154459204000401847
+      RadioOperator-Class_14: -4244620720066880111
+      RadioOperator-Class_15: 1743513491137860831
+      RadioOperator-Class_16: 8702239646977456279
+      RadioOperator-Class_17: 4588487306575229437
+      RadioOperator-Class_18: -3463482076858237337
+      RadioOperator-Class_2: -7695661161144565835
+      RadioOperator-Class_3: -1253331212991827356
+      RadioOperator-Class_4: 5543071233620991802
+      RadioOperator-Class_5: 4761788502632421447
+      RadioOperator-Class_6: 6329793640977924163
+      RadioOperator-Class_7: -297691160078912901
+      RadioOperator-Class_8: -1581857340423455630
+      RadioOperator-Class_9: 4956583842401379215
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

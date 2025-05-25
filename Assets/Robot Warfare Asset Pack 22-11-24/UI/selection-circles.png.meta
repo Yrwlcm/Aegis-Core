@@ -372,7 +372,17 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      selection-circles_0: -4444871683547212982
+      selection-circles_1: -1625317479065593265
+      selection-circles_2: -1273764565717627063
+      selection-circles_3: -4702590697314906824
+      selection-circles_4: -4965675816221690441
+      selection-circles_5: 6558833465980671138
+      selection-circles_6: 5912343072530117697
+      selection-circles_7: -482365887989742188
+      selection-circles_8: -6340924356551163820
+      selection-circles_9: -8275994226910454660
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

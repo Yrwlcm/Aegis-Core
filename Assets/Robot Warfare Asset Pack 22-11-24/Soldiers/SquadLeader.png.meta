@@ -547,7 +547,24 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      SquadLeader_0: -4451905166123498051
+      SquadLeader_1: -3914923972227396936
+      SquadLeader_10: -1907816895295840592
+      SquadLeader_11: 5594758944281250401
+      SquadLeader_12: -8877963362884585705
+      SquadLeader_13: 3329559862392606735
+      SquadLeader_14: 6169464416597033506
+      SquadLeader_15: 3558262426831834525
+      SquadLeader_16: -7803657955315687304
+      SquadLeader_2: 6126605690951644556
+      SquadLeader_3: -2822943893909896770
+      SquadLeader_4: -7661414099745027079
+      SquadLeader_5: 2209402619790954484
+      SquadLeader_6: -2244558932941171115
+      SquadLeader_7: 7632487120902152846
+      SquadLeader_8: 2718806093693296848
+      SquadLeader_9: -2600051030454848364
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

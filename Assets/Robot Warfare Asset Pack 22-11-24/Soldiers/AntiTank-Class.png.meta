@@ -522,7 +522,23 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      AntiTank-Class_0: 7217052818717094904
+      AntiTank-Class_1: -7896290610020698528
+      AntiTank-Class_10: -116854832915145381
+      AntiTank-Class_11: -5431379240226282148
+      AntiTank-Class_12: -6474964467137610275
+      AntiTank-Class_13: 4865668793299914812
+      AntiTank-Class_14: 5683632085313046245
+      AntiTank-Class_15: 7673992077678446835
+      AntiTank-Class_2: -6464089011332499505
+      AntiTank-Class_3: -5122809945570190987
+      AntiTank-Class_4: -8960289460378862509
+      AntiTank-Class_5: -3152466785016591071
+      AntiTank-Class_6: 7419904487080300793
+      AntiTank-Class_7: 6280891340745723073
+      AntiTank-Class_8: -5410935754764894826
+      AntiTank-Class_9: -6575334016605970303
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

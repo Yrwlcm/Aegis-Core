@@ -472,7 +472,21 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Scarab_0: 372622031870172341
+      Scarab_1: -5831119921745226977
+      Scarab_10: -3983721007543660762
+      Scarab_11: -2439385086012503889
+      Scarab_12: -5726071323620390219
+      Scarab_13: 4555319186464172555
+      Scarab_2: -509633119068516425
+      Scarab_3: 837786294858987567
+      Scarab_4: 5894700993271887926
+      Scarab_5: -6353616782675841699
+      Scarab_6: 7462357489550536158
+      Scarab_7: 1729394327092400296
+      Scarab_8: -4938190140845207852
+      Scarab_9: -2518418445511643430
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

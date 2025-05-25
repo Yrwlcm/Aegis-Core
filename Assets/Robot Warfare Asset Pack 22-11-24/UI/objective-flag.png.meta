@@ -272,7 +272,13 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      objective-flag_0: -7886395330655093654
+      objective-flag_1: -1934762664971161364
+      objective-flag_2: -5214202342824052977
+      objective-flag_3: 3893037550372614868
+      objective-flag_4: 4552197475646958427
+      objective-flag_5: -4014796652455409333
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
