@@ -1,4 +1,3 @@
-// AttackComponent.cs
 using System;
 using UnityEngine;
 
@@ -8,33 +7,29 @@ namespace AegisCore2D.UnitScripts
     {
         [Header("General Stats")]
         [SerializeField] private float damageAmount = 10f;
-        [SerializeField] private float attackRange = 5.0f; // Теперь это общая дальность, для рендж будет основной
+        [SerializeField] private float attackRange = 5.0f;
         [SerializeField] private float attackCooldown = 1.5f;
 
         [Header("Attack Type")]
         [SerializeField] private bool isRanged = false;
 
-        [Header("Melee Specific (if not ranged)")]
-        // Можно оставить attackRange выше как общую, или сделать отдельную meleeAttackRange, если isRanged = false.
-        // Для простоты пока используем общую attackRange. Если isRanged = false, то attackRange - это melee range.
-
         [Header("Ranged Specific (if isRanged)")]
         [SerializeField] private GameObject projectilePrefab;
-        [SerializeField] private Transform projectileSpawnPoint; // Точка, откуда вылетает снаряд
-        [SerializeField] private float projectileSpeed = 10f; // Скорость снаряда
+        [SerializeField] private Transform projectileSpawnPoint;
+        [SerializeField] private float projectileSpeed = 10f;
 
         private float currentCooldown = 0f;
         private HealthComponent healthComponent; 
 
         public event Action<IDamageable> OnAttackPerformed;
-        public event Action OnRangedAttackLaunched; // Для анимаций/звуков выстрела
+        public event Action OnRangedAttackLaunched;
 
-        void Awake()
+        private void Awake()
         {
             healthComponent = GetComponent<HealthComponent>();
             if (healthComponent == null)
             {
-                Debug.LogError("AttackComponent требует HealthComponent!", this);
+                Debug.LogError("AttackComponent requires an HealthComponent on the same GameObject.", this);
                 enabled = false;
                 return;
             }
@@ -43,18 +38,18 @@ namespace AegisCore2D.UnitScripts
             {
                 if (projectilePrefab == null)
                 {
-                    Debug.LogError($"Ranged AttackComponent на {gameObject.name} не имеет projectilePrefab!", this);
-                    isRanged = false; // Переключаем на мили, чтобы избежать ошибок
+                    Debug.LogError($"Ranged AttackComponent on {gameObject.name} is missing projectilePrefab!", this);
+                    isRanged = false; // Fallback to melee to prevent runtime errors
                 }
                 if (projectileSpawnPoint == null)
                 {
-                    Debug.LogWarning($"Ranged AttackComponent на {gameObject.name} не имеет projectileSpawnPoint! Будет использовать transform.position.", this);
-                    // projectileSpawnPoint = transform; // Можно использовать transform юнита как запасной вариант
+                    Debug.LogWarning($"Ranged AttackComponent on {gameObject.name} uses self as projectileSpawnPoint (not assigned).", this);
+                    projectileSpawnPoint = transform; 
                 }
             }
         }
 
-        void Update()
+        private void Update()
         {
             if (currentCooldown > 0)
             {
@@ -74,12 +69,13 @@ namespace AegisCore2D.UnitScripts
                 return false;
             }
 
+            // Prevent attacking own team (unless team ID is -1, indicating neutral/universally attackable)
             if (healthComponent.TeamId == target.TeamId && target.TeamId != -1) 
             {
-                return false; // Не атакуем своих
+                return false; 
             }
 
-            float distanceToTarget = Vector2.Distance(transform.position, target.MyTransform.position);
+            var distanceToTarget = Vector2.Distance(transform.position, target.MyTransform.position);
 
             if (distanceToTarget <= attackRange)
             {
@@ -98,7 +94,7 @@ namespace AegisCore2D.UnitScripts
 
         private void PerformMeleeAttack(IDamageable target)
         {
-            Debug.Log($"{gameObject.name} атакует (melee) {target.MyGameObject.name} на {damageAmount} урона.");
+            // Debug.Log($"{gameObject.name} melee attacks {target.MyGameObject.name} for {damageAmount} damage."); // Optional
             target.TakeDamage(damageAmount, gameObject);
             
             currentCooldown = attackCooldown;
@@ -107,23 +103,23 @@ namespace AegisCore2D.UnitScripts
 
         private void PerformRangedAttack(IDamageable target)
         {
-            Transform spawnPoint = projectileSpawnPoint != null ? projectileSpawnPoint : transform;
-            GameObject projectileGO = Instantiate(projectilePrefab, spawnPoint.position, spawnPoint.rotation);
-            Projectile projectileScript = projectileGO.GetComponent<Projectile>();
+            var spawnPoint = projectileSpawnPoint != null ? projectileSpawnPoint : transform;
+            var projectileGO = Instantiate(projectilePrefab, spawnPoint.position, spawnPoint.rotation);
+            var projectileScript = projectileGO.GetComponent<Projectile>();
 
             if (projectileScript != null)
             {
                 projectileScript.Initialize(target, damageAmount, projectileSpeed, healthComponent.TeamId, gameObject);
-                Debug.Log($"{gameObject.name} выпускает снаряд в {target.MyGameObject.name}.");
+                // Debug.Log($"{gameObject.name} launches projectile at {target.MyGameObject.name}."); // Optional
                 
                 currentCooldown = attackCooldown;
-                OnRangedAttackLaunched?.Invoke(); // Для звука/анимации выстрела
-                OnAttackPerformed?.Invoke(target); // Общее событие атаки
+                OnRangedAttackLaunched?.Invoke();
+                OnAttackPerformed?.Invoke(target);
             }
             else
             {
-                Debug.LogError($"Префаб снаряда {projectilePrefab.name} не содержит компонент Projectile!", this);
-                Destroy(projectileGO); // Уничтожаем неправильный снаряд
+                Debug.LogError($"Projectile prefab {projectilePrefab.name} is missing the Projectile component!", this);
+                Destroy(projectileGO);
             }
         }
 
@@ -132,13 +128,14 @@ namespace AegisCore2D.UnitScripts
             return attackRange;
         }
 
-        public void Initialize(float newDamage, float newRange, float newCooldown, bool newIsRanged, GameObject projPrefab = null, float projSpeed = 0)
+        public void Initialize(float newDamage, float newRange, float newCooldown, bool newIsRanged, GameObject projPrefab = null, float projSpeed = 0f)
         {
             damageAmount = newDamage;
             attackRange = newRange;
             attackCooldown = newCooldown;
             isRanged = newIsRanged;
-            if (isRanged) {
+            if (isRanged) 
+            {
                 projectilePrefab = projPrefab;
                 projectileSpeed = projSpeed;
             }

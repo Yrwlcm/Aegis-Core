@@ -30039,6 +30039,10 @@ PrefabInstance:
       value: 12
       objectReference: {fileID: 0}
     - target: {fileID: 5664597677885842486, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: teamIdInternal
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5664597677885842486, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
       propertyPath: _teamIdInternal
       value: 1
       objectReference: {fileID: 0}
@@ -31236,6 +31240,10 @@ PrefabInstance:
       value: 12
       objectReference: {fileID: 0}
     - target: {fileID: 5664597677885842486, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
+      propertyPath: teamIdInternal
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5664597677885842486, guid: 097f694de67360e4984193a639b4f9c3, type: 3}
       propertyPath: _teamIdInternal
       value: 1
       objectReference: {fileID: 0}
@@ -31322,8 +31330,6 @@ MonoBehaviour:
     m_Bits: 4096
   teamId: 0
   isPlayerManager: 1
-  defaultUnitScanRadiusMultiplier: 1.5
-  minScanRadius: 3
 --- !u!1 &1471271595
 GameObject:
   m_ObjectHideFlags: 0

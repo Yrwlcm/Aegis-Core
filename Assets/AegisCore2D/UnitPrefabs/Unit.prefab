@@ -282,7 +282,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d21b7928c226bc24faa61849de45bb67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _teamIdInternal: 0
+  teamIdInternal: 0
   attackMoveScanRadiusMultiplier: 1
   minAttackMoveScanRadius: 3
   moveComponent: {fileID: 2737966028222587154}
@@ -301,7 +301,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 997417aa9bdbf944284bc55eb020c45e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  agent: {fileID: 0}
 --- !u!114 &5748088130335657305
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -328,7 +327,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   line: {fileID: 2644989122194197073}
-  width: 0.1
+  lineWidth: 0.1
   targetMarker: {fileID: 2008208381768278733}
   markerSize: 0.18
   defaultPathColor: {r: 0, g: 1, b: 1, a: 1}

@@ -1,4 +1,3 @@
-// --- START OF FILE PathDisplay.cs ---
 using System.Collections.Generic;
 using System.Linq;
 using Pathfinding;
@@ -10,16 +9,16 @@ namespace AegisCore2D.UnitScripts
     public sealed class PathDisplay : MonoBehaviour
     {
         [Header("Line")]
-        [SerializeField] LineRenderer line;
-        [SerializeField] float width = 0.04f;
+        [SerializeField] private LineRenderer line;
+        [SerializeField] private float lineWidth = 0.04f;
 
         [Header("Target Marker")]
-        [SerializeField] SpriteRenderer targetMarker;
-        [SerializeField] float markerSize = 0.18f;
+        [SerializeField] private SpriteRenderer targetMarker;
+        [SerializeField] private float markerSize = 0.18f;
 
-        readonly List<Vector3> pathBuffer = new();
-        AIPath agent;
-        bool visible;
+        private readonly List<Vector3> pathBuffer = new();
+        private AIPath agent;
+        private bool isVisible; // Renamed for clarity
 
         [Header("Colors")]
         [SerializeField] private Color defaultPathColor = Color.cyan;
@@ -30,16 +29,22 @@ namespace AegisCore2D.UnitScripts
         public enum PathDisplayMode { None, Default, Attack, AttackMove }
         private PathDisplayMode currentDisplayMode = PathDisplayMode.None;
 
-        void Awake()
+        private void Awake()
         {
             agent = GetComponent<AIPath>();
 
+            if (line == null) { Debug.LogError("PathDisplay: LineRenderer not assigned.", this); enabled = false; return; }
+            if (targetMarker == null) { Debug.LogError("PathDisplay: TargetMarker SpriteRenderer not assigned.", this); enabled = false; return; }
+
+
             line.positionCount = 0;
-            line.startWidth = line.endWidth = width;
+            line.startWidth = line.endWidth = lineWidth;
+            line.enabled = false;
 
             targetMarker.transform.localScale = Vector3.one * markerSize;
             targetMarker.enabled = false;
-            SetDisplayMode(PathDisplayMode.Default); // Initialize with a default mode
+            
+            SetDisplayMode(PathDisplayMode.None); // Start with no display
         }
 
         public void SetAttackTargetOverride(IDamageable target)
@@ -47,123 +52,133 @@ namespace AegisCore2D.UnitScripts
             this.attackTargetOverride = target;
         }
 
-        void Update()
+        private void Update()
         {
-            if (!visible || currentDisplayMode == PathDisplayMode.None)
+            if (!isVisible || currentDisplayMode == PathDisplayMode.None || agent == null)
             {
-                line.enabled = false;
-                targetMarker.enabled = false;
+                if (line.enabled) line.enabled = false;
+                if (targetMarker.enabled) targetMarker.enabled = false;
                 return;
             }
 
-            line.enabled = true;
-            targetMarker.enabled = true;
+            // Ensure enabled state is managed before drawing
+            if (!line.enabled) line.enabled = true;
+            if (!targetMarker.enabled) targetMarker.enabled = true;
 
             if (currentDisplayMode == PathDisplayMode.Attack && attackTargetOverride != null && attackTargetOverride.IsAlive)
             {
-                line.positionCount = 2;
-                line.SetPosition(0, transform.position);
-                line.SetPosition(1, attackTargetOverride.MyTransform.position);
-                targetMarker.transform.position = attackTargetOverride.MyTransform.position;
+                DrawDirectLineToTarget(attackTargetOverride.MyTransform.position);
             }
             else if (currentDisplayMode == PathDisplayMode.Default || currentDisplayMode == PathDisplayMode.AttackMove)
             {
-                bool shouldDrawAiPath = agent.hasPath &&
-                                        !agent.pathPending &&
-                                        agent.remainingDistance > agent.endReachedDistance &&
-                                        agent.canMove;
+                DrawAgentPath();
+            }
+            else // Other modes or invalid state
+            {
+                if (line.enabled) line.enabled = false;
+                if (targetMarker.enabled) targetMarker.enabled = false;
+            }
+        }
+        
+        private void DrawDirectLineToTarget(Vector3 targetPos)
+        {
+            line.positionCount = 2;
+            line.SetPosition(0, transform.position); // Start from unit's current position
+            line.SetPosition(1, targetPos);
+            targetMarker.transform.position = targetPos;
+        }
 
-                if (shouldDrawAiPath)
+        private void DrawAgentPath()
+        {
+            var shouldDrawAiPath = agent.hasPath &&
+                                   !agent.pathPending &&
+                                   agent.remainingDistance > agent.endReachedDistance && // Use agent.remainingDistance
+                                   agent.canMove;
+
+            if (shouldDrawAiPath)
+            {
+                pathBuffer.Clear();
+                agent.GetRemainingPath(pathBuffer, out _); // out bool stale - can be ignored if not used
+
+                // A* might not return the exact agent.destination as the last point if it's unreachable/off-graph.
+                // If the path is short or destination changed, ensure last point is the actual destination.
+                if (pathBuffer.Count > 0 && Vector3.Distance(agent.destination, pathBuffer.Last()) > 0.6f) // Threshold for "close enough"
                 {
+                    var startPoint = pathBuffer.First(); // Keep the first calculated point
                     pathBuffer.Clear();
-                    agent.GetRemainingPath(pathBuffer, out _);
-
-                    if (pathBuffer.Count > 0 && Vector3.Distance(agent.destination, pathBuffer.Last()) > 0.6f)
-                    {
-                        var startPoint = pathBuffer.First();
-                        pathBuffer.Clear();
-                        pathBuffer.Add(startPoint);
-                        pathBuffer.Add(agent.destination);
-                    }
-
-                    if (pathBuffer.Count > 0)
-                    {
-                        line.positionCount = pathBuffer.Count;
-                        for (int i = 0; i < pathBuffer.Count; i++)
-                        {
-                            line.SetPosition(i, pathBuffer[i]);
-                        }
-                        targetMarker.transform.position = agent.destination;
-                    }
-                    else
-                    {
-                        if (Vector3.Distance(transform.position, agent.destination) > agent.endReachedDistance && agent.canMove)
-                        {
-                            line.positionCount = 2;
-                            line.SetPosition(0, transform.position);
-                            line.SetPosition(1, agent.destination);
-                            targetMarker.transform.position = agent.destination;
-                        }
-                        else
-                        {
-                             line.enabled = false;
-                             targetMarker.enabled = false;
-                        }
-                    }
+                    pathBuffer.Add(startPoint); // Could also use transform.position for current pos
+                    pathBuffer.Add(agent.destination);
                 }
-                else
+                
+                if (pathBuffer.Count > 0) // Path has at least one point
                 {
-                    line.enabled = false;
-                    targetMarker.enabled = false;
+                    // Prepend current unit position if not already the first point (for smoother line start)
+                    if (pathBuffer.Count == 1 || Vector3.Distance(transform.position, pathBuffer.First()) > 0.1f)
+                    {
+                        pathBuffer.Insert(0, transform.position);
+                    }
+
+                    line.positionCount = pathBuffer.Count;
+                    line.SetPositions(pathBuffer.ToArray()); // More efficient for setting multiple points
+                    targetMarker.transform.position = agent.destination; // Marker always at final destination
+                }
+                else // No path from GetRemainingPath, but agent might still be trying to move to destination
+                {
+                     DrawDirectLineToTarget(agent.destination); // Fallback to direct line if path calculation fails but has dest
                 }
             }
-            else
+            else // Not moving or no path
             {
-                line.enabled = false;
-                targetMarker.enabled = false;
+                if (line.enabled) line.enabled = false;
+                if (targetMarker.enabled) targetMarker.enabled = false;
             }
         }
 
+
         public void SetVisible(bool state)
         {
-            visible = state;
-            if (!state)
+            isVisible = state;
+            if (!state) // Immediately hide if set to not visible
             {
-                line.enabled = false;
-                targetMarker.enabled = false;
+                if (line.enabled) line.enabled = false;
+                if (targetMarker.enabled) targetMarker.enabled = false;
                 line.positionCount = 0;
             }
         }
 
         private void SetPathColor(Color newColor)
         {
-            line.startColor = line.endColor = newColor;
-            if (targetMarker != null)
-            {
-                targetMarker.color = newColor;
-            }
+            if (line != null) line.startColor = line.endColor = newColor;
+            if (targetMarker != null) targetMarker.color = newColor;
         }
 
         public void SetDisplayMode(PathDisplayMode mode)
         {
             currentDisplayMode = mode;
+            // Update visibility based on new mode, if path display is generally visible
+            if (isVisible) 
+            {
+                if (mode == PathDisplayMode.None)
+                {
+                    if (line.enabled) line.enabled = false;
+                    if (targetMarker.enabled) targetMarker.enabled = false;
+                } else {
+                    if (!line.enabled) line.enabled = true;
+                    if (!targetMarker.enabled) targetMarker.enabled = true;
+                }
+            }
+
+
             switch (mode)
             {
-                case PathDisplayMode.Default:
-                    SetPathColor(defaultPathColor);
-                    break;
-                case PathDisplayMode.Attack:
-                    SetPathColor(attackPathColor);
-                    break;
-                case PathDisplayMode.AttackMove:
-                    SetPathColor(attackMovePathColor);
-                    break;
+                case PathDisplayMode.Default: SetPathColor(defaultPathColor); break;
+                case PathDisplayMode.Attack: SetPathColor(attackPathColor); break;
+                case PathDisplayMode.AttackMove: SetPathColor(attackMovePathColor); break;
                 case PathDisplayMode.None:
                 default:
-                    // Color doesn't matter if line is disabled by Update logic
+                    // Color doesn't matter if line is disabled.
                     break;
             }
         }
     }
 }
-// --- END OF FILE PathDisplay.cs ---

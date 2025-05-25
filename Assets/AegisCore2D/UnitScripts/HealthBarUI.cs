@@ -1,5 +1,3 @@
-// HealthBarUI.cs
-
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,55 +6,45 @@ namespace AegisCore2D.UnitScripts
     public class HealthBarUI : MonoBehaviour
     {
         [SerializeField] private Image fillImage;
-        [SerializeField] private HealthComponent healthComponentToTrack; // Будет устанавливаться извне
+        private HealthComponent healthComponentToTrack;
 
         [Header("Sprite/Color Configuration")]
-        
         [SerializeField] private Color fullHealthColor = Color.green;
-        [SerializeField] private Color midHealthColor = Color.yellow; // Или оранжевый
+        [SerializeField] private Color midHealthColor = Color.yellow;
         [SerializeField] private Color lowHealthColor = Color.red;
 
-        [Tooltip("Порог для среднего здоровья (например, 0.6 для 60%)")]
+        [Tooltip("Threshold for mid health color (e.g., 0.6 for 60%)")]
         [SerializeField] private float midHealthThreshold = 0.6f;
-        [Tooltip("Порог для низкого здоровья (например, 0.3 для 30%)")]
+        [Tooltip("Threshold for low health color (e.g., 0.3 for 30%)")]
         [SerializeField] private float lowHealthThreshold = 0.3f;
         
-        private Camera mainCamera; // Кэшируем камеру для Billboard эффекта
+        private Camera mainCamera;
 
-        void Awake()
+        private void Awake()
         {
-            mainCamera = Camera.main; // Или твоя RTS камера, если она не main
+            mainCamera = Camera.main;
             if (fillImage == null)
             {
-                Debug.LogError("Fill Image не назначен в HealthBarUI!", this);
-                enabled = false; // Отключаем компонент, если нет fillImage
+                Debug.LogError("Fill Image not assigned in HealthBarUI!", this);
+                enabled = false; 
             }
         }
 
-        void OnEnable()
+        private void OnEnable()
         {
-            if (healthComponentToTrack != null)
-            {
-                healthComponentToTrack.OnHealthChanged += UpdateHealthDisplay;
-                healthComponentToTrack.OnDeath += HandleTargetDeath;
-                UpdateHealthDisplay(healthComponentToTrack.CurrentHealth, healthComponentToTrack.MaxHealth); // Обновить при активации
-            }
+            SubscribeToHealthComponentEvents();
         }
 
-        void OnDisable()
+        private void OnDisable()
         {
-            if (healthComponentToTrack != null)
-            {
-                healthComponentToTrack.OnHealthChanged -= UpdateHealthDisplay;
-                healthComponentToTrack.OnDeath -= HandleTargetDeath;
-            }
+            UnsubscribeFromHealthComponentEvents();
         }
         
-        // Для Billboard эффекта, чтобы HP бар всегда был повернут к камере
-        void LateUpdate()
+        private void LateUpdate()
         {
-            if (mainCamera != null)
+            if (mainCamera != null && healthComponentToTrack != null && healthComponentToTrack.IsAlive) // Ensure billboard faces camera
             {
+                // Basic billboard effect for UI in world space
                 transform.LookAt(transform.position + mainCamera.transform.rotation * Vector3.forward,
                                  mainCamera.transform.rotation * Vector3.up);
             }
@@ -64,95 +52,69 @@ namespace AegisCore2D.UnitScripts
 
         public void SetHealthComponent(HealthComponent healthComponent)
         {
-            // Отписываемся от старого, если был
-            if (healthComponentToTrack != null)
-            {
-                healthComponentToTrack.OnHealthChanged -= UpdateHealthDisplay;
-                healthComponentToTrack.OnDeath -= HandleTargetDeath;
-            }
+            UnsubscribeFromHealthComponentEvents(); // Unsubscribe from old one first
 
             healthComponentToTrack = healthComponent;
 
             if (healthComponentToTrack != null)
             {
-                healthComponentToTrack.OnHealthChanged += UpdateHealthDisplay;
-                healthComponentToTrack.OnDeath += HandleTargetDeath;
-                // Немедленно обновить отображение
+                SubscribeToHealthComponentEvents();
                 UpdateHealthDisplay(healthComponentToTrack.CurrentHealth, healthComponentToTrack.MaxHealth);
-                gameObject.SetActive(true); // Показать HP бар
+                gameObject.SetActive(true); 
             }
             else
             {
-                gameObject.SetActive(false); // Скрыть, если нет цели
+                gameObject.SetActive(false); 
+            }
+        }
+
+        private void SubscribeToHealthComponentEvents()
+        {
+            if (healthComponentToTrack != null)
+            {
+                healthComponentToTrack.OnHealthChanged += UpdateHealthDisplay;
+                healthComponentToTrack.OnDeath += HandleTargetDeath;
+                // Initial update in case health already set
+                UpdateHealthDisplay(healthComponentToTrack.CurrentHealth, healthComponentToTrack.MaxHealth);
+            }
+        }
+
+        private void UnsubscribeFromHealthComponentEvents()
+        {
+             if (healthComponentToTrack != null)
+            {
+                healthComponentToTrack.OnHealthChanged -= UpdateHealthDisplay;
+                healthComponentToTrack.OnDeath -= HandleTargetDeath;
             }
         }
 
         private void UpdateHealthDisplay(float currentHealth, float maxHealth)
         {
-            if (fillImage == null || healthComponentToTrack == null)
+            if (fillImage == null) return; 
+            
+            if (healthComponentToTrack == null) 
             {
-                // Если healthComponentToTrack == null, возможно, юнит уже уничтожен,
-                // и этот HealthBarUI скоро тоже будет уничтожен.
-                if(healthComponentToTrack == null && gameObject != null)
-                {
-                    Destroy(gameObject); // Если цели нет, уничтожаем и бар
-                }
+                if (gameObject != null) Destroy(gameObject); // Orphaned bar
                 return;
             }
+            // HandleTargetDeath is responsible for destroying the bar when the unit dies.
+            // This method just updates visuals if it's called.
 
-            if (!healthComponentToTrack.IsAlive)
-            {
-                // Если юнит мертв, HealthBarUI должен быть уничтожен через HandleTargetDeath.
-                // Эта ветка больше не должна скрывать объект, так как он будет уничтожен.
-                // gameObject.SetActive(false); // УБИРАЕМ ЭТО
-                // Если HandleTargetDeath еще не вызван, а мы уже здесь,
-                // то можно инициировать уничтожение. Но лучше полагаться на HandleTargetDeath.
-                return; // Просто выходим, ожидая уничтожения
-            }
-            if(!gameObject.activeSelf && healthComponentToTrack.IsAlive) 
-            {
-                // Эта логика нужна, если бар мог быть деактивирован по другой причине
-                // и теперь его нужно показать. Но при стратегии "уничтожать при смерти"
-                // она менее актуальна.
-                gameObject.SetActive(true);
-            }
-
-            if (fillImage == null || healthComponentToTrack == null) return;
-
-            if (!healthComponentToTrack.IsAlive)
-            {
-                gameObject.SetActive(false); // Скрываем HP бар, если юнит мертв
-                return;
-            }
-            else
-            {
-                 // Если HP бар был скрыт (например, после смерти и респауна), показываем его снова
-                if(!gameObject.activeSelf) gameObject.SetActive(true);
-            }
-
-
-            float fillAmount = currentHealth / maxHealth;
+            var fillAmount = (maxHealth > 0) ? Mathf.Clamp01(currentHealth / maxHealth) : 0f;
             fillImage.fillAmount = fillAmount;
 
-            if (fillAmount > midHealthThreshold)
-            {
-                fillImage.color = fullHealthColor;
-            }
-            else if (fillAmount > lowHealthThreshold)
-            {
-                fillImage.color = midHealthColor;
-            }
-            else
-            {
-                fillImage.color = lowHealthColor;
-            }
+            if (fillAmount > midHealthThreshold) fillImage.color = fullHealthColor;
+            else if (fillAmount > lowHealthThreshold) fillImage.color = midHealthColor;
+            else fillImage.color = lowHealthColor;
         }
         
         private void HandleTargetDeath(GameObject attacker)
         {
-            // Можно добавить задержку перед уничтожением, если нужна анимация смерти бара
-            // Destroy(gameObject, 0.1f); // Например, с задержкой 0.1 секунды
-            Destroy(gameObject); // Уничтожаем игровой объект HP бара
+            // Can add delay or animation before destroying
+            if (gameObject != null) // Check if not already destroyed
+            {
+                 Destroy(gameObject);
+            }
         }
     }
 }

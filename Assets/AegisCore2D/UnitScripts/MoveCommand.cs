@@ -5,29 +5,25 @@ namespace AegisCore2D.UnitScripts
     public sealed class MoveCommand : IUnitCommand
     {
         private readonly Vector3 targetPosition;
-        // private bool reached = false; // Флаг, что достигли (если команда должна сама себя завершать)
 
         public MoveCommand(Vector3 target) => this.targetPosition = target;
 
         public void Execute(Unit unit)
         {
-            // if (reached) return; // Если уже достигли, ничего не делаем
-
-            UnitMove moveComp = unit.MoveComponent;
+            var moveComp = unit.MoveComponent;
             if (moveComp != null)
             {
                 moveComp.MoveTo(targetPosition);
-                // Логика завершения команды теперь в Unit.Update()
-                // if (moveComp.HasReachedDestination())
-                // {
-                //    // Debug.Log($"{unit.name} достиг цели в MoveCommand.Execute.");
-                //    // unit.ClearCurrentCommand(); // Сообщаем юниту, что команда выполнена
-                //    // reached = true;
-                // }
+                // The Unit's Update loop is responsible for checking if HasReachedDestination
+                // and then calling ClearCurrentCommand.
+            }
+            else
+            {
+                // Debug.LogWarning($"{unit.name} cannot execute MoveCommand: Missing MoveComponent."); // Optional
+                unit.ClearCurrentCommand(); // Cannot move, so command is effectively done/failed
             }
         }
         
-        // Метод для отладки или для проверки в Unit.SetCommand
         public Vector3 GetTargetPosition_DEBUG() 
         {
             return targetPosition;

@@ -6,76 +6,110 @@ namespace AegisCore2D.UnitScripts
     [RequireComponent(typeof(Seeker), typeof(AIPath))]
     public sealed class UnitMove : MonoBehaviour
     {
-        public AIPath agent;
+        // AIPath component reference, public for read-only access by other systems (like PathDisplay)
+        // but primarily controlled by this UnitMove class.
+        public AIPath agent { get; private set; }
+
 
         private void Awake()
         {
             agent = GetComponent<AIPath>();
-            agent.canMove = false;
+            if (agent == null)
+            {
+                Debug.LogError("UnitMove requires an AIPath component!", this);
+                enabled = false;
+                return;
+            }
+            agent.canMove = false; // Start stationary
         }
         
-        public void StopAndHoldPosition() // Новое имя для ясности
+        /// <summary>
+        /// Stops movement and path searching, holding current position.
+        /// </summary>
+        public void StopAndHoldPosition() 
         {
+            if (agent == null) return;
             agent.canMove = false;
-            agent.canSearch = false; // Прекращаем поиск новых путей
-            agent.destination = transform.position; // Явно указываем, что текущая позиция - цель
+            agent.canSearch = false; 
+            agent.destination = transform.position;
+            agent.SetPath(null); // Clear current path to stop immediately
+            agent.FinalizeMovement(transform.position, agent.rotation); // Reset velocity
         }
         
+        /// <summary>
+        /// Allows the agent to move and search for paths again.
+        /// </summary>
         public void AllowMovementAndSearch()
         {
+            if (agent == null) return;
             agent.canMove = true;
             agent.canSearch = true;
         }
 
+        /// <summary>
+        /// Commands the unit to move to the target position.
+        /// </summary>
         public void MoveTo(Vector3 target)
         {
-            AllowMovementAndSearch(); // Включаем перед установкой новой цели
-            agent.destination = target;
+            if (agent == null) return;
             
-            // Если уже движемся к этой же цели (с небольшой погрешностью), не перезапускаем путь
-            if (agent.canMove && agent.hasPath && Vector3.Distance(agent.destination, target) < 0.1f)
+            AllowMovementAndSearch(); // Ensure agent can move before setting destination
+
+            // Avoid re-pathing if already moving to a very close target
+            // and path is still valid. This threshold can be tuned.
+            if (agent.hasPath && agent.pathPending == false &&
+                Vector3.Distance(agent.destination, target) < 0.1f &&
+                agent.remainingDistance > agent.endReachedDistance) // Still has distance to cover
             {
                 return;
             }
 
             agent.destination = target;
-            agent.canMove = true;
-            // agent.SearchPath(); // AIPath обычно сам вызывает SearchPath при изменении destination, если enabled.
-                                // Но для надежности можно вызвать, если он был выключен.
-            if (!agent.pathPending && (!agent.hasPath)) 
-            { // Если нет пути или он не валиден
-                 agent.SearchPath();
-            }
+            // AIPath should automatically search path if canSearch is true and destination changes.
+            // Explicitly call if issues:
+            // if (agent.isActiveAndEnabled) agent.SearchPath();
         }
 
+        /// <summary>
+        /// Stops movement immediately.
+        /// </summary>
         public void Stop()
         {
+            if (agent == null) return;
             agent.canMove = false;
-            // agent.SetPath(null); // Очищает текущий путь, чтобы юнит резко остановился
-            // или можно просто agent.destination = transform.position; и canMove = false
-            agent.destination = transform.position; // Ставим текущую позицию как цель, чтобы он не пытался "добежать"
-            // Если используется velocity для анимаций, его тоже нужно сбросить
-            agent.FinalizeMovement(transform.position, Quaternion.identity); // Сбрасывает внутренние состояния скорости
+            // agent.destination = transform.position; // Setting destination might make it recalculate a tiny path.
+            agent.SetPath(null); // Clear current path more effectively.
+            agent.FinalizeMovement(transform.position, agent.rotation); // Reset velocity etc.
         }
 
+        /// <summary>
+        /// Checks if the unit is currently actively moving towards a destination.
+        /// </summary>
         public bool IsMoving()
         {
-            // Проверяем, есть ли у агента путь, разрешено ли движение, и не достиг ли он конца пути
-            // (agent.reachedEndOfPath может быть не всегда точным, если endReachedDistance маленький)
-            // Лучше ориентироваться на desiredVelocity или remainingDistance
+            if (agent == null) return false;
+            // Check if agent can move, has a path, and is not yet at the end of it.
+            // AIPath.desiredVelocity.sqrMagnitude > 0.01f is also a good indicator.
             return agent.canMove && agent.hasPath && agent.remainingDistance > agent.endReachedDistance;
-            // или return agent.canMove && agent.desiredVelocity.sqrMagnitude > 0.01f;
         }
 
+        /// <summary>
+        /// Checks if the unit has reached its current destination.
+        /// </summary>
         public bool HasReachedDestination()
         {
-            // Проверка, достиг ли юнит цели (может быть полезно для команд)
+            if (agent == null) return true; // If no agent, arguably "at destination"
+            // reachedEndOfPath is true when remainingDistance <= endReachedDistance.
+            // Also check not pathPending to ensure it's not about to start a new path.
             return !agent.pathPending && agent.reachedEndOfPath;
         }
         
+        /// <summary>
+        /// Gets the current destination of the agent.
+        /// </summary>
         public Vector3 GetDestination()
         {
-            return agent.destination;
+            return agent != null ? agent.destination : transform.position;
         }
     }
 }

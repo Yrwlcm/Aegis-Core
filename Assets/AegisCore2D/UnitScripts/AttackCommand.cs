@@ -1,5 +1,3 @@
-// AttackCommand.cs
-
 using UnityEngine;
 
 namespace AegisCore2D.UnitScripts
@@ -7,7 +5,7 @@ namespace AegisCore2D.UnitScripts
     public class AttackCommand : IUnitCommand
     {
         private readonly IDamageable target;
-        private readonly Unit executingUnit; // Ссылка на юнита, выполняющего команду
+        private readonly Unit executingUnit;
 
         public AttackCommand(Unit unit, IDamageable target)
         {
@@ -15,78 +13,57 @@ namespace AegisCore2D.UnitScripts
             this.target = target;
         }
 
-        public void Execute(Unit unit) // unit здесь - это тот же самый executingUnit
+        public void Execute(Unit unit)
         {
             if (unit != executingUnit)
             {
-                Debug.LogError("AttackCommand: Выполняющий юнит не совпадает с инициализирующим юнитом!");
+                Debug.LogError("AttackCommand: Executing unit mismatch with instantiating unit!");
                 return;
             }
 
             if (target == null || !target.IsAlive)
             {
-                // Цель мертва или не существует, команда завершена (неудачно)
-                //Debug.Log($"{unit.name}: Цель для AttackCommand мертва или отсутствует.");
-                unit.ClearCurrentCommand(); // Сообщаем юниту, что команда выполнена (или провалена)
-                return;
-            }
-
-            AttackComponent attackComp = unit.AttackComponent;
-            UnitMove moveComp = unit.MoveComponent;
-
-            if (attackComp == null)
-            {
-                Debug.LogError($"{unit.name} не имеет AttackComponent для выполнения AttackCommand.");
                 unit.ClearCurrentCommand();
                 return;
             }
 
-            // Проверяем, может ли юнит атаковать эту цель (в радиусе)
+            var attackComp = unit.AttackComponent;
+            var moveComp = unit.MoveComponent;
+
+            if (attackComp == null)
+            {
+                Debug.LogError($"{unit.name} lacks AttackComponent for AttackCommand.");
+                unit.ClearCurrentCommand();
+                return;
+            }
+
             if (attackComp.TryAttack(target))
             {
-                // Атака совершена.
-                // Для простой логики "атаковал - команда выполнена"
-                // Если нужна логика "продолжать атаковать, пока цель жива",
-                // то команда не должна сразу завершаться.
-                // Пока оставим так: одна атака = одна выполненная команда.
-                // Юнит может решить перепоставить эту команду, если цель еще жива.
-                // Debug.Log($"{unit.name} успешно атаковал {target.MyGameObject.name} через AttackCommand.");
-                // unit.ClearCurrentCommand(); // Пока не будем очищать, чтобы юнит мог сам решить
+                // Attack successful. Command might persist if continuous attack is desired.
+                // Unit's Update loop will re-evaluate or clear command based on target status.
             }
             else
             {
-                // Не смогли атаковать (не в радиусе, на кулдауне и т.д.)
-                // Если не в радиусе, нужно двигаться к цели.
-                float distanceToTarget = Vector2.Distance(unit.transform.position, target.MyTransform.position);
+                // Could not attack (e.g., out of range, cooldown).
+                var distanceToTarget = Vector2.Distance(unit.transform.position, target.MyTransform.position);
                 if (distanceToTarget > attackComp.GetAttackRange())
                 {
                     if (moveComp != null)
                     {
-                        //Debug.Log($"{unit.name} движется к {target.MyGameObject.name} для атаки.");
                         moveComp.MoveTo(target.MyTransform.position);
-                        // Команда НЕ завершена, юнит будет двигаться, и в следующих Update() команда снова вызовется.
                     }
-                    else
-                    {
-                        //Debug.LogWarning($"{unit.name} не может двигаться к цели для атаки (нет MoveComponent).");
-                        //unit.ClearCurrentCommand(); // Не можем ни атаковать, ни двигаться
-                    }
+                    // else Debug.LogWarning($"{unit.name} cannot move to attack target (no MoveComponent)."); // Optional
                 }
-                else
+                else // In range, but couldn't attack (e.g. cooldown)
                 {
-                    // В радиусе, но не смогли атаковать (например, кулдаун)
-                    //Debug.Log($"{unit.name} в радиусе атаки {target.MyGameObject.name}, но не может атаковать (возможно, кулдаун).");
-                    // Команда НЕ завершена, ждем следующего тика Update, когда кулдаун может пройти.
-                    // Если юнит просто стоит и ждет кулдауна, он должен перестать двигаться.
-                    if (moveComp != null) // Не важно, двигался он или нет, если он у цели и ждет КД, он должен стоять.
+                    if (moveComp != null)
                     {
-                        moveComp.StopAndHoldPosition();
+                        moveComp.StopAndHoldPosition(); // Wait for cooldown, don't keep moving
                     }
                 }
             }
         }
 
-        // Дополнительный метод, чтобы проверить, актуальна ли еще команда
         public bool IsTargetStillValid()
         {
             return target != null && target.IsAlive;

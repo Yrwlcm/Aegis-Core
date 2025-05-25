@@ -1,6 +1,4 @@
-﻿// --- START OF FILE AttackMoveCommand.cs ---
-
-using AegisCore2D.GeneralScripts;
+﻿using AegisCore2D.GeneralScripts;
 using UnityEngine;
 
 namespace AegisCore2D.UnitScripts
@@ -8,46 +6,42 @@ namespace AegisCore2D.UnitScripts
     public class AttackMoveCommand : IUnitCommand
     {
         private readonly Vector3 targetPosition;
-        // Радиус сканирования и маска врагов теперь передаются не напрямую,
-        // а будут браться из юнита или его компонентов при выполнении.
-        // private readonly float scanRadius; // Убрали
-        // private readonly LayerMask enemyLayerMask; // Убрали
 
-        public AttackMoveCommand(Vector3 target) // Конструктор упрощен
+        public AttackMoveCommand(Vector3 target)
         {
             this.targetPosition = target;
         }
 
         public void Execute(Unit unit)
         {
-            if (unit == null || !unit.Health.IsAlive)
+            if (unit == null || unit.Health == null || !unit.Health.IsAlive)
             {
                 unit?.ClearCurrentCommand();
                 return;
             }
 
-            // Получаем параметры сканирования из юнита
-            float actualScanRadius = unit.AttackComponent.GetAttackRange() * unit.AttackMoveScanRadiusMultiplier;
+            if (unit.AttackComponent == null)
+            {
+                Debug.LogWarning($"{unit.name} (AttackMove): No AttackComponent. Clearing command.");
+                unit.ClearCurrentCommand();
+                return;
+            }
+            
+            var actualScanRadius = unit.AttackComponent.GetAttackRange() * unit.AttackMoveScanRadiusMultiplier;
             actualScanRadius = Mathf.Max(actualScanRadius, unit.MinAttackMoveScanRadius);
             
-            // Маску врагов можно брать из SelectionManager или передавать как параметр, если она динамическая.
-            // Для простоты, если она всегда одна, можно ее захардкодить или передать из SelectionManager при создании команды.
-            // Но раз мы ее убрали из конструктора, нужно ее как-то получить.
-            // Предположим, что у SelectionManager есть публичное свойство или метод для получения attackableMask.
-            // Это не самый лучший дизайн, но для примера:
             LayerMask enemyMask;
-            if (SelectionManager.Instances.TryGetValue(unit.Team, out var sm)) // Пытаемся получить менеджер команды юнита
+            if (SelectionManager.Instances.TryGetValue(unit.Team, out var sm))
             {
-                enemyMask = sm.GetAttackableMask_DEBUG(); // Нужен такой метод в SelectionManager
+                enemyMask = sm.GetAttackableMask_DEBUG(); 
             }
-            else // Если менеджер не найден (маловероятно для игрока), используем дефолтную маску
+            else 
             {
-                Debug.LogWarning($"SelectionManager for team {unit.Team} not found for AttackMoveCommand. Using default layer.");
-                enemyMask = LayerMask.GetMask("Default"); // Или твой слой врагов по умолчанию
+                Debug.LogWarning($"SelectionManager for team {unit.Team} not found for AttackMoveCommand. Using default layer for enemy scan.");
+                enemyMask = LayerMask.GetMask("Default"); // Consider a more robust default or error handling
             }
 
-
-            IDamageable closestEnemy = FindClosestEnemy(unit, actualScanRadius, enemyMask);
+            var closestEnemy = FindClosestEnemy(unit, actualScanRadius, enemyMask);
 
             if (closestEnemy != null && closestEnemy.IsAlive)
             {
@@ -55,12 +49,11 @@ namespace AegisCore2D.UnitScripts
                 return;
             }
 
-            UnitMove moveComp = unit.MoveComponent;
+            var moveComp = unit.MoveComponent;
             if (moveComp != null)
             {
-                float distanceToTarget = Vector3.Distance(unit.transform.position, targetPosition);
-                // Используем agent.endReachedDistance для более точного определения достижения цели
-                float endReachedDistance = moveComp.agent != null ? moveComp.agent.endReachedDistance : 0.1f;
+                var distanceToTarget = Vector3.Distance(unit.transform.position, targetPosition);
+                var endReachedDistance = moveComp.agent != null ? moveComp.agent.endReachedDistance : 0.1f;
 
                 if (distanceToTarget > endReachedDistance)
                 {
@@ -70,35 +63,34 @@ namespace AegisCore2D.UnitScripts
                 {
                     if (moveComp.IsMoving())
                     {
-                        moveComp.Stop(); // Останавливаемся, если достигли цели
+                        moveComp.Stop(); 
                     }
-                    unit.ClearCurrentCommand(); // Команда выполнена
+                    unit.ClearCurrentCommand(); 
                 }
             }
             else
             {
-                Debug.LogWarning($"{unit.name} (AttackMove): Нет MoveComponent. Команда отменена.");
+                Debug.LogWarning($"{unit.name} (AttackMove): No MoveComponent. Clearing command.");
                 unit.ClearCurrentCommand();
             }
         }
 
         private IDamageable FindClosestEnemy(Unit executingUnit, float scanRadius, LayerMask enemyLayerMask)
         {
-            Collider2D[] hitColliders = Physics2D.OverlapCircleAll(executingUnit.transform.position, scanRadius, enemyLayerMask);
+            var hitColliders = Physics2D.OverlapCircleAll(executingUnit.transform.position, scanRadius, enemyLayerMask);
             IDamageable closest = null;
-            float minDistanceSqr = float.MaxValue;
+            var minDistanceSqr = float.MaxValue;
 
             foreach (var hitCollider in hitColliders)
             {
                 if (hitCollider.gameObject == executingUnit.gameObject) continue;
 
-                IDamageable damageable = hitCollider.GetComponent<IDamageable>();
-                if (damageable == null) damageable = hitCollider.GetComponentInParent<IDamageable>();
+                var damageable = hitCollider.GetComponentInSelfOrParent<IDamageable>();
 
                 if (damageable != null && damageable.IsAlive &&
-                    (damageable.TeamId != executingUnit.Team || damageable.TeamId == -1)) // -1 для нейтральных целей
+                    (damageable.TeamId != executingUnit.Team || damageable.TeamId == -1)) 
                 {
-                    float distanceSqr = (executingUnit.transform.position - damageable.MyTransform.position).sqrMagnitude;
+                    var distanceSqr = (executingUnit.transform.position - damageable.MyTransform.position).sqrMagnitude;
                     if (distanceSqr < minDistanceSqr)
                     {
                         minDistanceSqr = distanceSqr;
@@ -115,4 +107,3 @@ namespace AegisCore2D.UnitScripts
         }
     }
 }
-// --- END OF FILE AttackMoveCommand.cs ---

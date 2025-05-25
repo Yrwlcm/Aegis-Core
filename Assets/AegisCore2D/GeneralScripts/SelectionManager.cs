@@ -1,11 +1,9 @@
-// --- START OF FILE SelectionManager.cs ---
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using AegisCore2D.UnitScripts;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.EventSystems;
 
 namespace AegisCore2D.GeneralScripts
 {
@@ -14,29 +12,29 @@ namespace AegisCore2D.GeneralScripts
         public static Dictionary<int, SelectionManager> Instances { get; } = new();
 
         [Header("References")]
-        [SerializeField] Camera cam;
-        [SerializeField] RectTransform boxVisual;
+        [SerializeField] private Camera cam;
+        [SerializeField] private RectTransform boxVisual;
 
         [Header("Filters")]
-        [SerializeField] LayerMask selectableMask;
-        [SerializeField] LayerMask attackableMask;
-        [SerializeField] int teamId;
-        [SerializeField] bool isPlayerManager;
+        [SerializeField] private LayerMask selectableMask;
+        [SerializeField] private LayerMask attackableMask; // Used by AttackMoveCommand via GetAttackableMask_DEBUG
+        [SerializeField] private int teamId;
+        [SerializeField] private bool isPlayerManager;
 
-        readonly HashSet<ISelectable> pool = new();
-        readonly HashSet<ISelectable> dragBuffer = new();
-        readonly HashSet<Unit> selected = new();
+        private readonly HashSet<ISelectable> pool = new();
+        private readonly HashSet<ISelectable> dragBuffer = new();
+        private readonly HashSet<Unit> selected = new();
 
-        Rect dragRect;
-        Vector2 dragStart;
-        bool dragging = false; // Явно инициализируем false
+        private Rect dragRect;
+        private Vector2 dragStart;
+        private bool dragging = false;
 
-        const float dragThreshold = 40f;
+        private const float DragThreshold = 40f; // Renamed for convention
 
         private InputSystem_Actions inputActions;
         private bool attackMoveModeActive = false;
 
-        void Awake()
+        private void Awake()
         {
             if (Instances.TryGetValue(teamId, out var inst) && inst != this)
             {
@@ -47,7 +45,7 @@ namespace AegisCore2D.GeneralScripts
 
             inputActions = new InputSystem_Actions();
 
-            if (boxVisual != null) // Убедимся, что boxVisual скрыт при старте
+            if (boxVisual != null)
             {
                 boxVisual.gameObject.SetActive(false);
             }
@@ -59,7 +57,7 @@ namespace AegisCore2D.GeneralScripts
 
         private void OnEnable()
         {
-            inputActions?.Enable(); // Включаем весь asset, а не только Player map, если есть другие карты
+            inputActions?.Enable();
             if (inputActions != null && inputActions.Player.AttackMoveModifier != null)
             {
                 inputActions.Player.AttackMoveModifier.performed += OnAttackMoveModifierPerformed;
@@ -77,31 +75,22 @@ namespace AegisCore2D.GeneralScripts
 
         private void OnAttackMoveModifierPerformed(InputAction.CallbackContext context)
         {
-            // Не включать режим, если никто не выбран и мы пытаемся его *включить*
             if (selected.Count == 0 && !attackMoveModeActive)
             {
-                 Debug.Log("Attack-Move Mode: Cannot activate, no units selected.");
+                // Debug.Log("Attack-Move Mode: Cannot activate, no units selected."); // Optional log
                 return;
             }
 
             attackMoveModeActive = !attackMoveModeActive;
-            Debug.Log("Attack-Move Mode: " + (attackMoveModeActive ? "ON" : "OFF") + " (Toggled by key)");
-
-            if (!attackMoveModeActive)
-            {
-                // Если режим был выключен клавишей 'A' (а не ПКМ),
-                // и у юнитов была команда AttackMove, ее можно отменить
-                // или оставить - зависит от желаемого поведения.
-                // Пока оставим как есть, чтобы не отменять команду, если пользователь просто передумал.
-            }
+            // Debug.Log("Attack-Move Mode: " + (attackMoveModeActive ? "ON" : "OFF") + " (Toggled by key)"); // Optional log
         }
 
-        public LayerMask GetAttackableMask_DEBUG()
+        public LayerMask GetAttackableMask_DEBUG() // Keep for AttackMoveCommand dependency
         {
             return attackableMask;
         }
 
-        void Update()
+        private void Update()
         {
             if (!isPlayerManager) return;
             
@@ -109,7 +98,7 @@ namespace AegisCore2D.GeneralScripts
             HandleRightMouseInput();
         }
 
-        void HandleLeftMouseInput()
+        private void HandleLeftMouseInput()
         {
             if (Mouse.current.leftButton.wasPressedThisFrame)
             {
@@ -122,37 +111,41 @@ namespace AegisCore2D.GeneralScripts
             else if (Mouse.current.leftButton.wasReleasedThisFrame)
             {
                 if (dragging) EndDrag();
+                // else if (attackMoveModeActive) // If LMB release while A-move active, maybe cancel A-move mode?
+                // {
+                //    attackMoveModeActive = false;
+                //    Debug.Log("Attack-Move Mode: OFF (LMB release)");
+                // }
             }
         }
 
-        void HandleRightMouseInput()
+        private void HandleRightMouseInput()
         {
             if (Mouse.current.rightButton.wasPressedThisFrame)
             {
                 if (selected.Count == 0) return;
 
-                Vector2 screen = Mouse.current.position.ReadValue();
-                Vector2 world = cam.ScreenToWorldPoint(screen);
+                var screen = Mouse.current.position.ReadValue();
+                var world = cam.ScreenToWorldPoint(screen);
 
                 if (attackMoveModeActive)
                 {
-                    Debug.Log($"Issuing ATTACK-MOVE command to {world}");
+                    // Debug.Log($"Issuing ATTACK-MOVE command to {world}"); // Optional log
                     BroadcastAttackMove(world);
-                    attackMoveModeActive = false; // Сбрасываем режим после команды
-                    Debug.Log("Attack-Move Mode: OFF (Command issued)");
+                    attackMoveModeActive = false; 
+                    // Debug.Log("Attack-Move Mode: OFF (Command issued)"); // Optional log
                 }
                 else
                 {
-                    Collider2D hitAttackable = Physics2D.OverlapPoint(world, attackableMask);
+                    var hitAttackable = Physics2D.OverlapPoint(world, attackableMask);
                     if (hitAttackable != null)
                     {
-                        IDamageable damageableTarget = hitAttackable.GetComponent<IDamageable>();
-                        if (damageableTarget == null) damageableTarget = hitAttackable.GetComponentInParent<IDamageable>();
+                        var damageableTarget = hitAttackable.GetComponentInSelfOrParent<IDamageable>();
 
                         if (damageableTarget != null && damageableTarget.IsAlive)
                         {
-                            bool isOwnTeamTarget = false;
-                            Unit firstSelectedUnit = selected.FirstOrDefault();
+                            var isOwnTeamTarget = false;
+                            var firstSelectedUnit = selected.FirstOrDefault();
                             if (firstSelectedUnit != null && firstSelectedUnit.Health != null &&
                                 firstSelectedUnit.Team == damageableTarget.TeamId && damageableTarget.TeamId != -1)
                             {
@@ -161,29 +154,25 @@ namespace AegisCore2D.GeneralScripts
 
                             if (!isOwnTeamTarget)
                             {
-                                Debug.Log($"Commanding selected units to ATTACK {damageableTarget.MyGameObject.name}");
+                                // Debug.Log($"Commanding selected units to ATTACK {damageableTarget.MyGameObject.name}"); // Optional log
                                 BroadcastAttack(damageableTarget);
                                 return;
                             }
                         }
                     }
-                    Debug.Log($"Commanding selected units to MOVE to {world}");
+                    // Debug.Log($"Commanding selected units to MOVE to {world}"); // Optional log
                     BroadcastMove(world);
                 }
             }
         }
 
-
-        void BeginDrag()
+        private void BeginDrag()
         {
-            // Если режим Attack-Move активен, ЛКМ не должен начинать выделение.
-            // Он может быть использован для других целей или просто игнорироваться.
-            // Сейчас мы его просто игнорируем для выделения.
             if (attackMoveModeActive)
             {
-                // Можно добавить логику, если A+ЛКМ что-то делает, или просто выйти.
-                // Пока выходим, чтобы не мешать.
-                return;
+                // Potentially cancel attack move mode on LMB click? Or handle A+Click for a specific target
+                // For now, LMB during attack-move doesn't start selection drag
+                return; 
             }
 
             if (!Keyboard.current.leftShiftKey.isPressed)
@@ -197,18 +186,18 @@ namespace AegisCore2D.GeneralScripts
             if (boxVisual != null)
             {
                 boxVisual.gameObject.SetActive(true);
-                boxVisual.anchoredPosition = dragStart; // Начинаем с точки клика
+                boxVisual.anchoredPosition = dragStart;
                 boxVisual.sizeDelta = Vector2.zero;
             }
-            dragRect = new Rect(dragStart, Vector2.zero); // Инициализируем Rect
-            dragBuffer.Clear(); // Очищаем буфер перед новым выделением
+            dragRect = new Rect(dragStart, Vector2.zero);
+            dragBuffer.Clear();
         }
 
-        void UpdateDrag()
+        private void UpdateDrag()
         {
-            Vector2 cur = Mouse.current.position.ReadValue();
-            Vector2 min = Vector2.Min(dragStart, cur);
-            Vector2 max = Vector2.Max(dragStart, cur);
+            var cur = Mouse.current.position.ReadValue();
+            var min = Vector2.Min(dragStart, cur);
+            var max = Vector2.Max(dragStart, cur);
 
             if (boxVisual != null)
             {
@@ -219,34 +208,25 @@ namespace AegisCore2D.GeneralScripts
             dragRect.min = min;
             dragRect.max = max;
 
-            // Обновление dragBuffer
-            // Чтобы избежать многократного Add/Remove, можно сделать так:
-            // 1. Очистить dragBuffer от тех, кто больше не выделен
-            // 2. Добавить новых
-            // Но для простоты пока оставим старый подход, он не должен быть причиной зависания.
-
             foreach (var sel in pool)
             {
                 if (sel == null || sel.GameObject == null) continue;
-                Vector2 scrPos = cam.WorldToScreenPoint(sel.GameObject.transform.position);
+                var scrPos = cam.WorldToScreenPoint(sel.GameObject.transform.position);
                 if (dragRect.Contains(scrPos))
                 {
-                    if (sel.Team == teamId)
+                    if (sel.Team == teamId) // Only select own team units
                     {
-                        if (!dragBuffer.Contains(sel)) // Добавляем, только если еще нет
+                        if (dragBuffer.Add(sel)) // Add returns true if item was added
                         {
-                            dragBuffer.Add(sel);
                             sel.EnableOutline();
                         }
                     }
                 }
-                else // Юнит не в прямоугольнике
+                else 
                 {
-                    if (dragBuffer.Contains(sel)) // Если был в буфере, удаляем
+                    if (dragBuffer.Remove(sel)) // Remove returns true if item was removed
                     {
-                        dragBuffer.Remove(sel);
-                        // Снимаем аутлайн, только если он не в основном списке 'selected'
-                        Unit unitSel = sel as Unit;
+                        var unitSel = sel as Unit;
                         if (unitSel == null || !selected.Contains(unitSel))
                         {
                             sel.DisableOutline();
@@ -256,28 +236,30 @@ namespace AegisCore2D.GeneralScripts
             }
         }
 
-        void EndDrag()
+        private void EndDrag()
         {
             if (boxVisual != null)
             {
                 boxVisual.gameObject.SetActive(false);
             }
 
-            if (Vector2.Distance(dragStart, Mouse.current.position.ReadValue()) < dragThreshold) // Проверка на "клик"
+            if (Vector2.Distance(dragStart, Mouse.current.position.ReadValue()) < DragThreshold) 
             {
                 ClickSelect();
             }
-            else // Это было выделение рамкой
+            else 
             {
                 BoxSelect();
             }
-
-            // Очистка после выделения
-            foreach (var item in pool) // Снимаем подсветку с тех, кто был в dragBuffer, но не попал в selected
+            
+            // Clean up outlines from items that were in dragBuffer but didn't make it to final 'selected'
+            // This loop might be redundant if BoxSelect and DeselectAll correctly manage outlines.
+            // However, keeping it for safety to ensure no dangling outlines from dragBuffer.
+            foreach (var item in pool) 
             {
                 if (item != null && !dragBuffer.Contains(item) && item.OutlineEnabled)
                 {
-                     Unit unitItem = item as Unit;
+                     var unitItem = item as Unit;
                      if (unitItem == null || !selected.Contains(unitItem))
                      {
                         item.DisableOutline();
@@ -285,22 +267,24 @@ namespace AegisCore2D.GeneralScripts
                 }
             }
             dragBuffer.Clear();
-            dragging = false; // Важно сбросить флаг
+            dragging = false;
         }
         
-        void CancelDrag() // Новый метод для принудительной отмены драга
+        public void CancelDrag() // Public if called from elsewhere, e.g. UI or other input
         {
+            if (!dragging) return;
+
             if (boxVisual != null)
             {
                 boxVisual.gameObject.SetActive(false);
             }
-            // Снимаем аутлайны с тех, кто был в буфере
+            
             foreach (var item in dragBuffer)
             {
                 if (item != null)
                 {
-                    Unit unitItem = item as Unit;
-                    if (unitItem == null || !selected.Contains(unitItem)) // Не снимать, если уже в selected
+                    var unitItem = item as Unit;
+                    if (unitItem == null || !selected.Contains(unitItem)) 
                     {
                         item.DisableOutline();
                     }
@@ -308,137 +292,127 @@ namespace AegisCore2D.GeneralScripts
             }
             dragBuffer.Clear();
             dragging = false;
-            Debug.Log("Drag Canceled");
+            // Debug.Log("Drag Canceled"); // Optional log
         }
 
-
-        void ClickSelect()
+        private void ClickSelect()
         {
-             // Если режим Attack-Move активен, ЛКМ не должен ничего выделять
             if (attackMoveModeActive) return;
 
-            Vector2 screen = Mouse.current.position.ReadValue();
-            Vector2 world = cam.ScreenToWorldPoint(screen);
-            Collider2D hit = Physics2D.OverlapPoint(world, selectableMask);
+            var screen = Mouse.current.position.ReadValue();
+            var world = cam.ScreenToWorldPoint(screen);
+            var hit = Physics2D.OverlapPoint(world, selectableMask);
 
-            bool shiftPressed = Keyboard.current.leftShiftKey.isPressed;
+            var shiftPressed = Keyboard.current.leftShiftKey.isPressed;
 
             if (hit != null)
             {
                 var sel = hit.GetComponent<ISelectable>();
-                if (sel != null && sel.Team == teamId)
+                if (sel != null && sel.Team == teamId) // Can only select own team units
                 {
                     ToggleSelect(sel as Unit, shiftPressed);
-                    return; // Выделили/сняли выделение, выходим
+                    return; 
                 }
             }
 
-            // Если кликнули на пустое место и Shift не нажат, снимаем все выделения
             if (!shiftPressed)
             {
                 DeselectAll();
             }
         }
 
-        void BoxSelect()
+        private void BoxSelect()
         {
-            // Режим Attack-Move не должен влиять на выделение рамкой
-            bool shiftPressed = Keyboard.current.leftShiftKey.isPressed;
-            if (!shiftPressed) // Если шифт не нажат, сначала снимаем все текущие выделения
+            var shiftPressed = Keyboard.current.leftShiftKey.isPressed;
+            if (!shiftPressed) 
             {
                 DeselectAll();
             }
 
-            foreach (var s in dragBuffer) // dragBuffer уже содержит только юнитов нашей команды
+            foreach (var s in dragBuffer) 
             {
-                Select(s as Unit); // Select уже добавляет в selected и включает аутлайн
+                Select(s as Unit); 
             }
-            // dragBuffer будет очищен в EndDrag
+            // dragBuffer is cleared in EndDrag
         }
 
-        void ToggleSelect(Unit u, bool shiftIsPressed) // Изменен для явной передачи shift
+        private void ToggleSelect(Unit u, bool shiftIsPressed)
         {
             if (u == null || u.Health == null || !u.Health.IsAlive) return;
 
             if (shiftIsPressed)
             {
-                if (selected.Contains(u))
-                {
-                    Deselect(u);
-                }
-                else
-                {
-                    Select(u);
-                }
+                if (selected.Contains(u)) Deselect(u);
+                else Select(u);
             }
-            else // Shift не нажат, стандартное выделение одного
+            else 
             {
                 DeselectAll();
                 Select(u);
             }
         }
 
-        void Select(params Unit[] units)
+        private void Select(params Unit[] units)
         {
             foreach (var unit in units)
             {
                 if (unit != null && unit.Health != null && unit.Health.IsAlive)
                 {
-                    if (selected.Add(unit)) // Add возвращает true, если элемент был добавлен (т.е. его не было)
+                    if (selected.Add(unit)) 
                     {
-                        unit.Select(); // Вызываем метод Select самого юнита
+                        unit.Select(); 
                     }
                 }
             }
         }
 
-        void Deselect(params Unit[] units)
+        private void Deselect(params Unit[] units)
         {
             foreach (var unit in units)
             {
                 if (unit != null)
                 {
-                    if (selected.Remove(unit)) // Remove возвращает true, если элемент был удален
+                    if (selected.Remove(unit)) 
                     {
-                        unit.Deselect(); // Вызываем метод Deselect самого юнита
+                        unit.Deselect(); 
                     }
                 }
             }
         }
 
-        void DeselectAll()
+        private void DeselectAll()
         {
-            // Копируем в массив, чтобы избежать ошибки изменения коллекции во время итерации
-            Unit[] currentlySelected = selected.ToArray();
-            foreach (Unit u in currentlySelected)
+            var currentlySelected = selected.ToArray(); // ToArray avoids collection modification during iteration
+            foreach (var u in currentlySelected)
             {
-                Deselect(u); // Deselect уже удалит из selected и вызовет u.Deselect()
+                Deselect(u); 
             }
-            // selected.Clear(); // После цикла selected должен быть пустым
+            // selected set should be empty after Deselect(u) calls if u was in selected.
+            // If selected.Remove(u) in Deselect didn't clear it, an explicit selected.Clear() might be needed,
+            // but current logic implies it will be cleared.
         }
 
-        // BroadcastAttackMove, BroadcastMove, BroadcastAttack остаются без изменений
-        void BroadcastAttackMove(Vector2 targetPoint)
+        private void BroadcastAttackMove(Vector2 targetPoint)
         {
-            foreach (Unit u in selected)
+            foreach (var u in selected)
             {
                 if (u == null || u.AttackComponent == null) continue;
                 u.SetCommand(new AttackMoveCommand(targetPoint));
             }
         }
 
-        void BroadcastMove(Vector2 target)
+        private void BroadcastMove(Vector2 target)
         {
-            foreach (Unit u in selected)
+            foreach (var u in selected)
             {
                 if (u == null) continue;
                 u.SetCommand(new MoveCommand(target));
             }
         }
 
-        void BroadcastAttack(IDamageable target)
+        private void BroadcastAttack(IDamageable target)
         {
-            foreach (Unit u in selected)
+            foreach (var u in selected)
             {
                 if (u == null) continue;
                 u.SetCommand(new AttackCommand(u, target));
@@ -457,10 +431,9 @@ namespace AegisCore2D.GeneralScripts
             mgr.pool.Remove(unit);
             if (unit is Unit u)
             {
-                mgr.selected.Remove(u);
+                mgr.selected.Remove(u); // Ensure unit is removed from selection if it dies/is removed
             }
-            mgr.dragBuffer.Remove(unit);
+            mgr.dragBuffer.Remove(unit); // Also from drag buffer
         }
     }
 }
-// --- END OF FILE SelectionManager.cs ---
