@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using AegisCore2D.UnitScripts;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 namespace AegisCore2D.GeneralScripts
@@ -22,6 +23,7 @@ namespace AegisCore2D.GeneralScripts
         [SerializeField] private bool isPlayerManager;
 
         private readonly HashSet<ISelectable> pool = new();
+        public int PoolCount => pool.Count;
         private readonly HashSet<ISelectable> dragBuffer = new();
         private readonly HashSet<Unit> selected = new();
 
@@ -92,6 +94,18 @@ namespace AegisCore2D.GeneralScripts
 
         private void Update()
         {
+            // Проверяем, не над UI ли курсор И не на паузе ли игра
+            if (Time.timeScale == 0f) // Time.timeScale == 0f - это хороший индикатор паузы
+            {
+                // Если мы находились в процессе выделения рамкой, когда открылось меню, отменяем его.
+                if (dragging) 
+                {
+                    CancelDrag(); // Используй твой метод отмены выделения
+                }
+                return; // Не обрабатываем игровой ввод мыши, если курсор над UI или игра на паузе
+            }
+
+            
             if (!isPlayerManager) return;
             
             HandleLeftMouseInput();
@@ -435,7 +449,10 @@ namespace AegisCore2D.GeneralScripts
             }
             mgr.dragBuffer.Remove(unit); // Also from drag buffer
         }
-        
-        public int GetSelectedUnitCount_DEBUG() => pool.Count;
+
+        private void OnDestroy()
+        {
+            Instances.Remove(teamId);
+        }
     }
 }

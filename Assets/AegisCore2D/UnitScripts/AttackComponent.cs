@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AegisCore2D.UnitScripts
@@ -12,10 +13,11 @@ namespace AegisCore2D.UnitScripts
 
         [Header("Attack Type")]
         [SerializeField] private bool isRanged = false;
+        public bool IsRanged => isRanged;
 
         [Header("Line of Sight (for Ranged)")]
         [Tooltip("Слой, который блокирует линию огня для атак дальнего боя.")]
-        [SerializeField] private LayerMask lineOfSightMask; // Сюда нужно будет добавить слой "Obstacle"
+        [SerializeField] private LayerMask lineOfSightMask; 
 
         [Header("Ranged Specific (if isRanged)")]
         [SerializeField] private GameObject projectilePrefab;
@@ -23,7 +25,7 @@ namespace AegisCore2D.UnitScripts
         [SerializeField] private float projectileSpeed = 10f;
 
         private float currentCooldown = 0f;
-        private HealthComponent healthComponent;
+        private HealthComponent healthComponent; 
 
         public event Action<IDamageable> OnAttackPerformed;
         public event Action OnRangedAttackLaunched;
@@ -47,23 +49,16 @@ namespace AegisCore2D.UnitScripts
                 }
                 if (projectileSpawnPoint == null)
                 {
-                    // Debug.LogWarning($"Ranged AttackComponent на {gameObject.name} использует себя как projectileSpawnPoint (не назначен).", this);
-                    projectileSpawnPoint = transform;
+                    projectileSpawnPoint = transform; 
                 }
-                if (lineOfSightMask == 0 && isRanged) // Если маска не настроена, а юнит дальнего боя
+                if (lineOfSightMask.value == 0) // Проверяем .value, т.к. пустая маска это 0
                 {
                     Debug.LogWarning($"Ranged AttackComponent на {gameObject.name} не имеет настроенной lineOfSightMask. " +
-                                     $"Рекомендуется настроить для корректной работы линии огня. " +
-                                     $"По умолчанию будет использован слой 'Default' или 'Obstacle', если они есть.", this);
-                    // Попытка установить маску по умолчанию, если не задана в инспектоre
+                                     $"Автоматическая атака и проверка LOS могут работать некорректно. " +
+                                     $"Попытка установить слой 'Obstacle'.", this);
                     int obstacleLayer = LayerMask.NameToLayer("Obstacle");
-                    if (obstacleLayer != -1) lineOfSightMask = 1 << obstacleLayer; // Устанавливаем только слой Obstacle
-                    else
-                    {
-                        int defaultLayer = LayerMask.NameToLayer("Default");
-                        if (defaultLayer != -1) lineOfSightMask = 1 << defaultLayer;
-                    }
-
+                    if (obstacleLayer != -1) lineOfSightMask = 1 << obstacleLayer;
+                    else Debug.LogError("Слой 'Obstacle' не найден. LineOfSightMask не установлена.", this);
                 }
             }
         }
@@ -88,7 +83,7 @@ namespace AegisCore2D.UnitScripts
                 return false;
             }
 
-            if (healthComponent.TeamId == target.TeamId && target.TeamId != -1)
+            if (healthComponent.TeamId == target.TeamId && target.TeamId != -1) 
             {
                 return false; 
             }
@@ -97,13 +92,11 @@ namespace AegisCore2D.UnitScripts
 
             if (distanceToTarget <= attackRange)
             {
-                // Проверка линии огня для юнитов дальнего боя
                 if (isRanged)
                 {
-                    if (!HasLineOfSight(target))
+                    if (!HasClearLineOfSight(target)) // Используем публичный метод
                     {
-                        // Debug.Log($"{gameObject.name} не может атаковать {target.MyGameObject.name}: нет линии огня.");
-                        return false; // Нет линии огня
+                        return false; 
                     }
                     PerformRangedAttack(target);
                 }
@@ -116,34 +109,52 @@ namespace AegisCore2D.UnitScripts
             return false;
         }
 
-        private bool HasLineOfSight(IDamageable target)
+        /// <summary>
+        /// Проверяет, есть ли прямая видимость до цели для юнитов дальнего боя.
+        /// </summary>
+        public bool HasClearLineOfSight(IDamageable target)
         {
-            if (!isRanged) return true; // Для мили-атак линия огня всегда есть (в пределах досягаемости)
-            if (lineOfSightMask == 0) return true; // Если маска не задана, считаем, что линия огня есть
+            if (!isRanged) return true; 
+            if (lineOfSightMask.value == 0) return true; // Если маска не задана, считаем, что LOS есть (хотя это не идеально)
+            if (target == null || target.MyGameObject == null) return false;
+
 
             var spawnPos = projectileSpawnPoint != null ? projectileSpawnPoint.position : transform.position;
-            var targetPos = target.MyTransform.position; // Можно целиться в центр коллайдера цели, если нужно точнее
+            var targetPos = target.MyTransform.position; 
 
-            // Пытаемся получить коллайдер цели, чтобы не попасть в него при Linecast
-            Collider2D targetCollider = target.MyGameObject.GetComponent<Collider2D>();
-            if (targetCollider != null) targetCollider.enabled = false; // Временно отключаем коллайдер цели
+            // Для более точной проверки можно целиться в центр коллайдера цели, если он есть
+            Collider2D targetMainCollider = target.MyGameObject.GetComponent<Collider2D>();
+            if(targetMainCollider != null) targetPos = targetMainCollider.bounds.center;
 
+
+            // Временно отключаем все коллайдеры на цели и ее дочерних объектах, чтобы Linecast не попал в них.
+            // Это упрощенный подход. Более надежно - использовать слои и `ContactFilter2D` или `QueryTriggerInteraction.Ignore`.
+            List<Collider2D> targetColliders = new List<Collider2D>();
+            target.MyGameObject.GetComponentsInChildren<Collider2D>(true, targetColliders); // true - include inactive
+            
+            List<bool> originalStates = new List<bool>();
+            foreach(var col in targetColliders)
+            {
+                originalStates.Add(col.enabled);
+                col.enabled = false;
+            }
+            
             RaycastHit2D hit = Physics2D.Linecast(spawnPos, targetPos, lineOfSightMask);
 
-            if (targetCollider != null) targetCollider.enabled = true; // Включаем коллайдер цели обратно
-
+            // Восстанавливаем состояние коллайдеров цели
+            for(int i=0; i< targetColliders.Count; i++)
+            {
+                if(targetColliders[i] != null) // На случай если коллайдер был уничтожен пока был выключен (маловероятно)
+                   targetColliders[i].enabled = originalStates[i];
+            }
+            
             if (hit.collider != null)
             {
-                // Проверяем, не является ли препятствие частью самой цели (маловероятно с отключением коллайдера, но для полноты)
-                // IDamageable hitDamageable = hit.collider.GetComponentInParent<IDamageable>();
-                // if (hitDamageable == target) return true; // Попали в саму цель, игнорируем как препятствие
-                
-                // Debug.Log($"{gameObject.name} -> {target.MyGameObject.name}: Линия огня заблокирована {hit.collider.name}");
-                return false; // Линия огня заблокирована
+                // Debug.Log($"{gameObject.name} -> {target.MyGameObject.name}: Линия огня заблокирована {hit.collider.name} на слое {LayerMask.LayerToName(hit.collider.gameObject.layer)}");
+                return false; 
             }
-            return true; // Линия огня свободна
+            return true; 
         }
-
 
         private void PerformMeleeAttack(IDamageable target)
         {
@@ -163,7 +174,7 @@ namespace AegisCore2D.UnitScripts
                 projectileScript.Initialize(target, damageAmount, projectileSpeed, healthComponent.TeamId, gameObject);
                 currentCooldown = attackCooldown;
                 OnRangedAttackLaunched?.Invoke();
-                OnAttackPerformed?.Invoke(target);
+                OnAttackPerformed?.Invoke(target); // OnAttackPerformed для обоих типов атак
             }
             else
             {
@@ -183,11 +194,11 @@ namespace AegisCore2D.UnitScripts
             attackRange = newRange;
             attackCooldown = newCooldown;
             isRanged = newIsRanged;
-            if (isRanged)
+            if (isRanged) 
             {
                 projectilePrefab = projPrefab;
                 projectileSpeed = projSpeed;
-                if (losMask != default) lineOfSightMask = losMask; // Если передана новая маска, используем ее
+                if (losMask.value != 0) lineOfSightMask = losMask; 
             }
         }
     }
