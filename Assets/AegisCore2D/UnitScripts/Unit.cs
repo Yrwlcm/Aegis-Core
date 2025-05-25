@@ -1,285 +1,250 @@
-// Unit.cs
-
-using System.Collections.Generic;
 using AegisCore2D.GeneralScripts;
 using UnityEngine;
 
 namespace AegisCore2D.UnitScripts
 {
-    [RequireComponent(typeof(HealthComponent), typeof(UnitMove), typeof(AttackComponent))] // Добавляем это
+    [RequireComponent(typeof(HealthComponent), typeof(UnitMove), typeof(AttackComponent))]
     public class Unit : MonoBehaviour, ISelectable
     {
         public GameObject GameObject { get; private set; }
         public bool Selected { get; private set; }
         public bool OutlineEnabled { get; private set; }
 
-        // Свойство Team теперь будет делегировать к HealthComponent или устанавливать его
-        [SerializeField] private int _teamIdInternal; // Для установки в инспекторе
+        [SerializeField] private int teamIdInternal; // Serialized for editor assignment
 
         public int Team
         {
-            get => Health?.TeamId ?? _teamIdInternal; // Возвращаем из HealthComponent, если есть
+            get => Health?.TeamId ?? teamIdInternal; // Prioritize HealthComponent's team if available
             set
             {
-                _teamIdInternal = value;
+                teamIdInternal = value;
                 if (Health != null)
                 {
-                    Health.SetTeamId(value);
+                    Health.SetTeamId(value); // Keep HealthComponent's team in sync
                 }
             }
         }
 
+        [Header("Attack-Move Settings")]
+        [SerializeField] private float attackMoveScanRadiusMultiplier = 1.5f;
+        [SerializeField] private float minAttackMoveScanRadius = 3f;
+
+        [Header("Component References")]
         [SerializeField] private UnitMove moveComponent;
         [SerializeField] private AttackComponent attackComponent;
-        [SerializeField] private Outline outline;
+        [SerializeField] private Outline outline; // Should be on a child object or this one
 
-        [Header("UI")] [SerializeField] private GameObject healthBarPrefab;
+        [Header("UI")]
+        [SerializeField] private GameObject healthBarPrefab;
         private HealthBarUI healthBarInstance;
-        private static Canvas worldSpaceCanvas;
+        private static Canvas worldSpaceCanvas; // Shared canvas for all unit health bars
         private PathDisplay pathDisplay;
 
         public UnitMove MoveComponent => moveComponent;
         public AttackComponent AttackComponent => attackComponent;
-        public HealthComponent Health { get; private set; } // Добавляем ссылку на HealthComponent
+        public HealthComponent Health { get; private set; }
+        public float AttackMoveScanRadiusMultiplier => attackMoveScanRadiusMultiplier;
+        public float MinAttackMoveScanRadius => minAttackMoveScanRadius;
 
-
-        // Заменяем Queue на одну текущую команду для упрощения логики "атакуй-иди"
-        // private readonly Queue<IUnitCommand> commandQueue = new();
         private IUnitCommand currentCommand;
 
-        private void Awake() // Изменяем Start на Awake для инициализации компонентов раньше
+        private void Awake()
         {
-            GameObject = gameObject;
+            GameObject = gameObject; // Cache GameObject reference
             Health = GetComponent<HealthComponent>();
-            pathDisplay = GetComponent<PathDisplay>();
+            // Other components are [SerializeField], Unity handles their assignment if dragged in Inspector
+            // Fallback to GetComponent if not assigned in inspector (optional, good for robustness)
+            if (moveComponent == null) moveComponent = GetComponent<UnitMove>();
+            if (attackComponent == null) attackComponent = GetComponent<AttackComponent>();
+            if (pathDisplay == null) pathDisplay = GetComponent<PathDisplay>(); // Optional
+            if (outline == null) outline = GetComponentInChildren<Outline>(); // Optional, often a child
 
             if (Health != null)
             {
-                Health.SetTeamId(_teamIdInternal);
+                Health.SetTeamId(teamIdInternal); // Ensure HealthComponent has the correct team ID from Unit
                 Health.OnDeath += HandleDeath;
             }
+            else Debug.LogError("Unit is missing HealthComponent!", this);
 
+            if (moveComponent == null) Debug.LogError("Unit is missing UnitMove component!", this);
+            if (attackComponent == null) Debug.LogError("Unit is missing AttackComponent!", this);
+            // pathDisplay and outline logs are optional based on their necessity
+
+            SetupHealthBar();
+        }
+        
+        private void SetupHealthBar()
+        {
             if (worldSpaceCanvas == null)
             {
-                GameObject canvasObj = GameObject.FindWithTag("HPBarWorldCanvas");
+                // Find canvas once, by tag or name. Consider a more robust service locator for UI canvas.
+                var canvasObj = GameObject.FindWithTag("HPBarWorldCanvas") ?? GameObject.Find("WorldSpaceUICanvas");
                 if (canvasObj != null) worldSpaceCanvas = canvasObj.GetComponent<Canvas>();
-                if (worldSpaceCanvas == null)
-                {
-                    canvasObj = GameObject.Find("WorldSpaceUICanvas");
-                    if (canvasObj != null) worldSpaceCanvas = canvasObj.GetComponent<Canvas>();
-                }
-
-                if (worldSpaceCanvas == null)
-                {
-                    Debug.LogError("WorldSpaceUICanvas не найден в сцене!");
-                }
+                else Debug.LogError("Critical: WorldSpaceUICanvas (tagged 'HPBarWorldCanvas' or named 'WorldSpaceUICanvas') not found!");
             }
 
-            if (healthBarPrefab != null && worldSpaceCanvas != null)
+            if (healthBarPrefab != null && worldSpaceCanvas != null && Health != null)
             {
-                GameObject hbInstanceGo = Instantiate(healthBarPrefab, worldSpaceCanvas.transform);
+                var hbInstanceGo = Instantiate(healthBarPrefab, worldSpaceCanvas.transform);
                 healthBarInstance = hbInstanceGo.GetComponent<HealthBarUI>();
-
                 if (healthBarInstance != null)
                 {
-                    healthBarInstance.SetHealthComponent(this.Health);
-                    // Начальное позиционирование HP бара будет в центре юнита.
-                    // Обновление позиции - в LateUpdate.
+                    healthBarInstance.SetHealthComponent(Health);
                 }
-                else
-                {
-                    Debug.LogError("Префаб HP бара не содержит HealthBarUI компонент!", this);
-                }
+                else Debug.LogError("Health Bar Prefab missing HealthBarUI component!", healthBarPrefab);
             }
-            else
-            {
-                if (healthBarPrefab == null)
-                    Debug.LogWarning("Health Bar Prefab не назначен для юнита: " + gameObject.name, this);
-            }
+            // else if (healthBarPrefab == null) Debug.LogWarning($"Health Bar Prefab not assigned for unit: {gameObject.name}", this); // Optional
         }
 
-        void LateUpdate() // Изменяем Unit.LateUpdate
+
+        private void LateUpdate() // For UI elements that track world objects
         {
-            if (healthBarInstance != null && healthBarInstance.gameObject.activeSelf && Health.IsAlive)
+            if (healthBarInstance != null && Health != null && healthBarInstance.gameObject.activeSelf && Health.IsAlive)
             {
-                // Позиционируем HP бар в центре трансформа юнита
-                healthBarInstance.transform.position = transform.position;
-
-                // Billboard эффект (поворот к камере) уже обрабатывается в HealthBarUI.LateUpdate()
-            }
-            // Скрытие бара при смерти юнита также обрабатывается в HealthBarUI через событие OnDeath
-            // или здесь, если нужно гарантировать:
-            else if (healthBarInstance != null && !Health.IsAlive && healthBarInstance.gameObject.activeSelf)
-            {
-                healthBarInstance.gameObject.SetActive(false);
+                // Position health bar above unit; adjust Y offset as needed
+                healthBarInstance.transform.position = transform.position + Vector3.up * 1.0f; // Example offset
             }
         }
-
 
         private void Start()
         {
-            // Если _teamIdInternal был установлен в инспекторе, HealthComponent его уже должен был получить в своем Start или через наш Awake.
-            // Либо здесь еще раз явно устанавливаем, если нужно:
-            // if (Health != null) Health.SetTeamId(_teamIdInternal); 
-
             SelectionManager.RegisterUnitForTeam(this, Team);
         }
 
         private void HandleDeath(GameObject attacker)
         {
-            // Здесь логика, специфичная для смерти юнита,
-            // например, отмена текущих команд, проигрывание анимации смерти (когда будет)
-            Debug.Log($"Unit {gameObject.name} is handling its death. Attacker: {attacker?.name}");
-            ClearCurrentCommand(); // Очищаем очередь команд
-
-            // Отписываемся от SelectionManager, если объект будет уничтожен HealthComponent'ом
-            // Если юнит не уничтожается сразу (а, например, превращается в труп), то отписка не нужна здесь.
-            // Но так как HealthComponent по умолчанию уничтожает GameObject, отписка здесь правильна.
-            SelectionManager.RemoveUnitForTeam(this, Team); // Это уже есть в OnDestroy, но при смерти тоже нужно
-
-            // Сам GameObject будет уничтожен в HealthComponent.Die()
-            // Если нужно здесь дополнительно что-то сделать перед уничтожением (например, скрыть Outline)
-            if (Selected) Deselect(); // Снять выделение, если был выделен
+            ClearCurrentCommand();
+            if (Selected) Deselect(); // Deselect on death
+            // Unit destruction can be handled here or by a spawner/manager listening to OnDeath
+            // For simplicity, let's assume unit is destroyed. If pooling, set inactive.
+            SelectionManager.RemoveUnitForTeam(this, Team); // Ensure removal from selection pools
+            Destroy(gameObject, 0.1f); // Delay slightly for other systems to react
         }
 
         private void Update()
         {
-            if (!Health.IsAlive)
+            if (Health == null || !Health.IsAlive)
             {
-                // Если юнит умер, а команда была, очистим ее
-                if (currentCommand != null) ClearCurrentCommand();
+                if (currentCommand != null) ClearCurrentCommand(); // Ensure command is cleared if unit died externally
                 return;
             }
 
-            if (currentCommand != null)
+            ExecuteCurrentCommand();
+        }
+
+        private void ExecuteCurrentCommand()
+        {
+            if (currentCommand == null) return;
+
+            if (currentCommand is AttackCommand attackCmd)
             {
-                // Проверяем, актуальна ли команда (например, если это AttackCommand, жива ли цель)
-                if (currentCommand is AttackCommand attackCmd) // Используем "is" с объявлением переменной
+                if (!attackCmd.IsTargetStillValid()) ClearCurrentCommand();
+                else currentCommand.Execute(this);
+            }
+            else if (currentCommand is MoveCommand) // No AttackMoveCommand check needed here if it transitions
+            {
+                currentCommand.Execute(this);
+                if (MoveComponent != null && MoveComponent.HasReachedDestination())
                 {
-                    if (!attackCmd.IsTargetStillValid())
-                    {
-                        //Debug.Log($"{name}: Цель AttackCommand более не валидна, очищаем команду.");
-                        ClearCurrentCommand(); // Цель умерла или исчезла
-                    }
-                    else
-                    {
-                        currentCommand.Execute(this);
-                    }
+                    ClearCurrentCommand();
                 }
-                else // Для других типов команд (например, MoveCommand)
-                {
-                    currentCommand.Execute(this);
-                    // MoveCommand должен сам решить, когда он выполнен (например, по достижению цели)
-                    // и вызвать ClearCurrentCommand() у юнита.
-                    // Пока MoveCommand этого не делает, он будет выполняться каждый кадр.
-                    if (currentCommand is MoveCommand && MoveComponent.HasReachedDestination())
-                    {
-                        //Debug.Log($"{name}: Достиг цели MoveCommand, очищаем команду.");
-                        ClearCurrentCommand();
-                    }
-                }
+            }
+            else // Includes AttackMoveCommand and any other commands
+            {
+                 currentCommand.Execute(this);
+            }
+        }
+        
+        private void UpdatePathDisplayForCurrentCommand()
+        {
+            if (pathDisplay == null || !pathDisplay.isActiveAndEnabled) return;
+
+            if (!Selected || Health == null || !Health.IsAlive) // Don't show path if not selected or dead
+            {
+                pathDisplay.SetVisible(false);
+                return;
+            }
+            pathDisplay.SetVisible(true); // Make visible if selected and alive
+
+            if (currentCommand is AttackCommand attackCmd && attackCmd.IsTargetStillValid())
+            {
+                pathDisplay.SetDisplayMode(PathDisplay.PathDisplayMode.Attack);
+                pathDisplay.SetAttackTargetOverride(attackCmd.GetTarget());
+            }
+            else if (currentCommand is AttackMoveCommand) // AttackMove has a target position, not a specific entity target for path
+            {
+                pathDisplay.SetDisplayMode(PathDisplay.PathDisplayMode.AttackMove);
+                pathDisplay.SetAttackTargetOverride(null); 
+            }
+            else if (currentCommand is MoveCommand)
+            {
+                pathDisplay.SetDisplayMode(PathDisplay.PathDisplayMode.Default);
+                pathDisplay.SetAttackTargetOverride(null);
+            }
+            else // No command or unknown command type
+            {
+                pathDisplay.SetDisplayMode(PathDisplay.PathDisplayMode.None);
+                pathDisplay.SetAttackTargetOverride(null);
             }
         }
 
-        /// <summary>
-        /// Назначает новую команду юниту, отменяя предыдущую.
-        /// </summary>
         public void SetCommand(IUnitCommand cmd)
         {
-            if (!Health.IsAlive) return;
+            if (Health == null || !Health.IsAlive) return;
 
-            // Если это команда движения, и новая команда тоже движения к той же точке, можно не прерывать
-            if (currentCommand is MoveCommand oldMoveCmd && cmd is MoveCommand newMoveCmd)
+            // Basic optimization: avoid re-assigning identical commands if not strictly necessary
+            if (currentCommand?.GetType() == cmd?.GetType())
             {
-                if (Vector3.Distance(MoveComponent.GetDestination(), ((MoveCommand)cmd).GetTargetPosition_DEBUG()) <
-                    0.1f) // GetTargetPosition_DEBUG нужно будет добавить в MoveCommand
+                // Add more specific checks if needed (e.g. target comparison)
+                if (currentCommand is MoveCommand oldMove && cmd is MoveCommand newMove &&
+                    Vector3.Distance(oldMove.GetTargetPosition_DEBUG(), newMove.GetTargetPosition_DEBUG()) < 0.1f &&
+                    (MoveComponent != null && MoveComponent.IsMoving())) // Only skip if already moving to same spot
                 {
-                    // Уже движемся туда же
                     return;
                 }
+                // Similar checks for AttackCommand, AttackMoveCommand target/position
             }
-
-
-            // Если текущая команда - атака, и новая команда - атака той же цели, не прерываем
-            if (currentCommand is AttackCommand oldAttackCmd && cmd is AttackCommand newAttackCmd)
-            {
-                if (oldAttackCmd.GetTarget() == newAttackCmd.GetTarget())
-                {
-                    return; // Уже атакуем эту цель
-                }
-            }
-
-            // Перед назначением новой команды, если юнит двигался по старой, остановим его.
-            // Это спорный момент: иногда мы хотим, чтобы юнит "переключился" на лету.
-            // if (MoveComponent.IsMoving())
-            // {
-            //    MoveComponent.Stop();
-            // }
 
             currentCommand = cmd;
-            //Debug.Log($"{name} получил новую команду: {cmd.GetType().Name}");
-
-            // Обновляем PathDisplay
-            if (pathDisplay != null && pathDisplay.isActiveAndEnabled &&
-                Selected) // Обновляем только если выбран и активен
-            {
-                if (cmd is AttackCommand)
-                {
-                    pathDisplay.SetPathMode(true); // Режим атаки
-                }
-                else if (cmd is MoveCommand)
-                {
-                    pathDisplay.SetPathMode(false); // Режим движения
-                }
-                // Если команда null (очищена), PathDisplay должен сам сбросить цвет или сделать это в ClearCurrentCommand
-            }
+            UpdatePathDisplayForCurrentCommand(); // Update path display when command changes
         }
 
-        // Метод для команды, чтобы сообщить юниту о своем завершении
         public void ClearCurrentCommand()
         {
-            //Debug.Log($"{name}: Команда {currentCommand?.GetType().Name} завершена/очищена.");
-            if (currentCommand != null && currentCommand is AttackCommand)
+            if (currentCommand is AttackCommand || currentCommand is AttackMoveCommand) // If it was an offensive command
             {
-                // Если это была атака, и мы очищаем команду (например, цель умерла),
-                // то нужно остановить движение, если юнит двигался к цели.
-                if (MoveComponent.IsMoving())
+                if (MoveComponent != null && MoveComponent.IsMoving())
                 {
-                    MoveComponent.Stop();
+                     // Decide if unit should stop or continue to last move point of AttackMove
+                     // For now, just stop if it was an attack command that got cleared.
+                     if (currentCommand is AttackCommand) MoveComponent.Stop();
                 }
             }
-
             currentCommand = null;
-
-            // Сбрасываем цвет пути на дефолтный, если команда очищена
-            if (pathDisplay != null && pathDisplay.isActiveAndEnabled && Selected)
-            {
-                pathDisplay.SetPathMode(false); // Сброс на режим движения (дефолтный)
-            }
+            UpdatePathDisplayForCurrentCommand();
         }
 
         private void OnDestroy()
         {
-            // Deselect() здесь может вызвать ошибку, если GameObject уже уничтожается
-            // Лучше логику деселекта и отписки от менеджера перенести в HandleDeath или гарантировать,
-            // что OnDestroy вызывается до фактического уничтожения связанных систем.
-            // Однако, SelectionManager.RemoveUnitForTeam должен быть устойчив к тому, что юнит уже удален.
-
-            // Если подписывались на события, здесь отписываемся
             if (Health != null)
             {
-                Health.OnDeath -= HandleDeath;
+                Health.OnDeath -= HandleDeath; // Unsubscribe
             }
-            // Важно: если юнит умирает и уничтожается, SelectionManager.RemoveUnitForTeam
-            // должен быть вызван ДО того, как ссылка на этот Unit станет невалидной в SelectionManager.
-            // Вызов в HandleDeath уже решает эту проблему.
-            // Но если юнит уничтожается по другой причине (не смерть), то OnDestroy важен.
-            // SelectionManager.RemoveUnitForTeam(this, Team); // Этот вызов уже есть в HandleDeath. Если оставить и тут, убедись, что это безопасно (не вызовет ошибок при двойном удалении)
+            // SelectionManager.RemoveUnitForTeam is called in HandleDeath if unit is destroyed by self.
+            // If destroyed externally, this OnDestroy ensures cleanup.
+            // However, if HandleDeath already called Destroy(gameObject), this might be redundant or run on already destroyed obj.
+            // It's safer if HandleDeath calls RemoveUnitForTeam, and external destruction also calls it or relies on this.
+            // For robustness:
+            if(Health == null || Health.IsAlive) // If not already handled by HandleDeath (i.e. unit destroyed externally while alive)
+            {
+                 SelectionManager.RemoveUnitForTeam(this, Team);
+            }
         }
 
+        // ISelectable Implementation
         public void EnableOutline()
         {
-            if (Health.IsAlive)
+            if (outline != null && Health != null && Health.IsAlive)
             {
                 outline.Show(true);
                 OutlineEnabled = true;
@@ -288,23 +253,19 @@ namespace AegisCore2D.UnitScripts
 
         public void DisableOutline()
         {
-            outline.Show(false);
-            OutlineEnabled = false;
-        } // Можно не показывать аутлайн у мертвых, но снимать его всегда
+            if (outline != null)
+            {
+                outline.Show(false);
+                OutlineEnabled = false;
+            }
+        }
 
         public void Select()
         {
-            if (!Health.IsAlive) return;
-            EnableOutline();
+            if (Health == null || !Health.IsAlive) return;
+            EnableOutline(); // Unit's primary selection outline
             Selected = true;
-
-            if (pathDisplay != null)
-            {
-                pathDisplay.SetVisible(true);
-                // Устанавливаем цвет в зависимости от текущей команды
-                if (currentCommand is AttackCommand) pathDisplay.SetPathMode(true);
-                else pathDisplay.SetPathMode(false); // Включая случай, когда currentCommand == null
-            }
+            UpdatePathDisplayForCurrentCommand(); // Show path when selected
         }
 
         public void Deselect()
@@ -313,9 +274,14 @@ namespace AegisCore2D.UnitScripts
             Selected = false;
             if (pathDisplay != null)
             {
-                pathDisplay.SetVisible(false);
-                // pathDisplay.SetPathMode(false); // Можно сбросить цвет при деселекте
+                pathDisplay.SetVisible(false); // Hide path when deselected
             }
+        }
+        
+        // For debugging purposes
+        public IUnitCommand GetCurrentCommand_DEBUG()
+        {
+            return currentCommand;
         }
     }
 }

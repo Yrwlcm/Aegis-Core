@@ -1,4 +1,3 @@
-// AttackComponent.cs
 using System;
 using UnityEngine;
 
@@ -8,33 +7,33 @@ namespace AegisCore2D.UnitScripts
     {
         [Header("General Stats")]
         [SerializeField] private float damageAmount = 10f;
-        [SerializeField] private float attackRange = 5.0f; // Теперь это общая дальность, для рендж будет основной
+        [SerializeField] private float attackRange = 5.0f;
         [SerializeField] private float attackCooldown = 1.5f;
 
         [Header("Attack Type")]
         [SerializeField] private bool isRanged = false;
 
-        [Header("Melee Specific (if not ranged)")]
-        // Можно оставить attackRange выше как общую, или сделать отдельную meleeAttackRange, если isRanged = false.
-        // Для простоты пока используем общую attackRange. Если isRanged = false, то attackRange - это melee range.
+        [Header("Line of Sight (for Ranged)")]
+        [Tooltip("Слой, который блокирует линию огня для атак дальнего боя.")]
+        [SerializeField] private LayerMask lineOfSightMask; // Сюда нужно будет добавить слой "Obstacle"
 
         [Header("Ranged Specific (if isRanged)")]
         [SerializeField] private GameObject projectilePrefab;
-        [SerializeField] private Transform projectileSpawnPoint; // Точка, откуда вылетает снаряд
-        [SerializeField] private float projectileSpeed = 10f; // Скорость снаряда
+        [SerializeField] private Transform projectileSpawnPoint;
+        [SerializeField] private float projectileSpeed = 10f;
 
         private float currentCooldown = 0f;
-        private HealthComponent healthComponent; 
+        private HealthComponent healthComponent;
 
         public event Action<IDamageable> OnAttackPerformed;
-        public event Action OnRangedAttackLaunched; // Для анимаций/звуков выстрела
+        public event Action OnRangedAttackLaunched;
 
-        void Awake()
+        private void Awake()
         {
             healthComponent = GetComponent<HealthComponent>();
             if (healthComponent == null)
             {
-                Debug.LogError("AttackComponent требует HealthComponent!", this);
+                Debug.LogError("AttackComponent требует HealthComponent на том же GameObject.", this);
                 enabled = false;
                 return;
             }
@@ -44,17 +43,32 @@ namespace AegisCore2D.UnitScripts
                 if (projectilePrefab == null)
                 {
                     Debug.LogError($"Ranged AttackComponent на {gameObject.name} не имеет projectilePrefab!", this);
-                    isRanged = false; // Переключаем на мили, чтобы избежать ошибок
+                    isRanged = false; 
                 }
                 if (projectileSpawnPoint == null)
                 {
-                    Debug.LogWarning($"Ranged AttackComponent на {gameObject.name} не имеет projectileSpawnPoint! Будет использовать transform.position.", this);
-                    // projectileSpawnPoint = transform; // Можно использовать transform юнита как запасной вариант
+                    // Debug.LogWarning($"Ranged AttackComponent на {gameObject.name} использует себя как projectileSpawnPoint (не назначен).", this);
+                    projectileSpawnPoint = transform;
+                }
+                if (lineOfSightMask == 0 && isRanged) // Если маска не настроена, а юнит дальнего боя
+                {
+                    Debug.LogWarning($"Ranged AttackComponent на {gameObject.name} не имеет настроенной lineOfSightMask. " +
+                                     $"Рекомендуется настроить для корректной работы линии огня. " +
+                                     $"По умолчанию будет использован слой 'Default' или 'Obstacle', если они есть.", this);
+                    // Попытка установить маску по умолчанию, если не задана в инспектоre
+                    int obstacleLayer = LayerMask.NameToLayer("Obstacle");
+                    if (obstacleLayer != -1) lineOfSightMask = 1 << obstacleLayer; // Устанавливаем только слой Obstacle
+                    else
+                    {
+                        int defaultLayer = LayerMask.NameToLayer("Default");
+                        if (defaultLayer != -1) lineOfSightMask = 1 << defaultLayer;
+                    }
+
                 }
             }
         }
 
-        void Update()
+        private void Update()
         {
             if (currentCooldown > 0)
             {
@@ -74,17 +88,23 @@ namespace AegisCore2D.UnitScripts
                 return false;
             }
 
-            if (healthComponent.TeamId == target.TeamId && target.TeamId != -1) 
+            if (healthComponent.TeamId == target.TeamId && target.TeamId != -1)
             {
-                return false; // Не атакуем своих
+                return false; 
             }
 
-            float distanceToTarget = Vector2.Distance(transform.position, target.MyTransform.position);
+            var distanceToTarget = Vector2.Distance(transform.position, target.MyTransform.position);
 
             if (distanceToTarget <= attackRange)
             {
+                // Проверка линии огня для юнитов дальнего боя
                 if (isRanged)
                 {
+                    if (!HasLineOfSight(target))
+                    {
+                        // Debug.Log($"{gameObject.name} не может атаковать {target.MyGameObject.name}: нет линии огня.");
+                        return false; // Нет линии огня
+                    }
                     PerformRangedAttack(target);
                 }
                 else
@@ -96,34 +116,59 @@ namespace AegisCore2D.UnitScripts
             return false;
         }
 
+        private bool HasLineOfSight(IDamageable target)
+        {
+            if (!isRanged) return true; // Для мили-атак линия огня всегда есть (в пределах досягаемости)
+            if (lineOfSightMask == 0) return true; // Если маска не задана, считаем, что линия огня есть
+
+            var spawnPos = projectileSpawnPoint != null ? projectileSpawnPoint.position : transform.position;
+            var targetPos = target.MyTransform.position; // Можно целиться в центр коллайдера цели, если нужно точнее
+
+            // Пытаемся получить коллайдер цели, чтобы не попасть в него при Linecast
+            Collider2D targetCollider = target.MyGameObject.GetComponent<Collider2D>();
+            if (targetCollider != null) targetCollider.enabled = false; // Временно отключаем коллайдер цели
+
+            RaycastHit2D hit = Physics2D.Linecast(spawnPos, targetPos, lineOfSightMask);
+
+            if (targetCollider != null) targetCollider.enabled = true; // Включаем коллайдер цели обратно
+
+            if (hit.collider != null)
+            {
+                // Проверяем, не является ли препятствие частью самой цели (маловероятно с отключением коллайдера, но для полноты)
+                // IDamageable hitDamageable = hit.collider.GetComponentInParent<IDamageable>();
+                // if (hitDamageable == target) return true; // Попали в саму цель, игнорируем как препятствие
+                
+                // Debug.Log($"{gameObject.name} -> {target.MyGameObject.name}: Линия огня заблокирована {hit.collider.name}");
+                return false; // Линия огня заблокирована
+            }
+            return true; // Линия огня свободна
+        }
+
+
         private void PerformMeleeAttack(IDamageable target)
         {
-            Debug.Log($"{gameObject.name} атакует (melee) {target.MyGameObject.name} на {damageAmount} урона.");
             target.TakeDamage(damageAmount, gameObject);
-            
             currentCooldown = attackCooldown;
             OnAttackPerformed?.Invoke(target);
         }
 
         private void PerformRangedAttack(IDamageable target)
         {
-            Transform spawnPoint = projectileSpawnPoint != null ? projectileSpawnPoint : transform;
-            GameObject projectileGO = Instantiate(projectilePrefab, spawnPoint.position, spawnPoint.rotation);
-            Projectile projectileScript = projectileGO.GetComponent<Projectile>();
+            var spawnPoint = projectileSpawnPoint != null ? projectileSpawnPoint : transform;
+            var projectileGO = Instantiate(projectilePrefab, spawnPoint.position, spawnPoint.rotation);
+            var projectileScript = projectileGO.GetComponent<Projectile>();
 
             if (projectileScript != null)
             {
                 projectileScript.Initialize(target, damageAmount, projectileSpeed, healthComponent.TeamId, gameObject);
-                Debug.Log($"{gameObject.name} выпускает снаряд в {target.MyGameObject.name}.");
-                
                 currentCooldown = attackCooldown;
-                OnRangedAttackLaunched?.Invoke(); // Для звука/анимации выстрела
-                OnAttackPerformed?.Invoke(target); // Общее событие атаки
+                OnRangedAttackLaunched?.Invoke();
+                OnAttackPerformed?.Invoke(target);
             }
             else
             {
                 Debug.LogError($"Префаб снаряда {projectilePrefab.name} не содержит компонент Projectile!", this);
-                Destroy(projectileGO); // Уничтожаем неправильный снаряд
+                Destroy(projectileGO);
             }
         }
 
@@ -132,15 +177,17 @@ namespace AegisCore2D.UnitScripts
             return attackRange;
         }
 
-        public void Initialize(float newDamage, float newRange, float newCooldown, bool newIsRanged, GameObject projPrefab = null, float projSpeed = 0)
+        public void Initialize(float newDamage, float newRange, float newCooldown, bool newIsRanged, GameObject projPrefab = null, float projSpeed = 0f, LayerMask losMask = default)
         {
             damageAmount = newDamage;
             attackRange = newRange;
             attackCooldown = newCooldown;
             isRanged = newIsRanged;
-            if (isRanged) {
+            if (isRanged)
+            {
                 projectilePrefab = projPrefab;
                 projectileSpeed = projSpeed;
+                if (losMask != default) lineOfSightMask = losMask; // Если передана новая маска, используем ее
             }
         }
     }

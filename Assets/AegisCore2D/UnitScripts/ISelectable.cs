@@ -4,15 +4,15 @@ namespace AegisCore2D.UnitScripts
 {
     public interface ISelectable
     {
-        public GameObject GameObject { get; }
-        public bool Selected { get; }
-        public bool OutlineEnabled { get; }
-        public int Team { get; set; }
+        GameObject GameObject { get; }
+        bool Selected { get; } // Should reflect if the unit is part of the current primary selection
+        bool OutlineEnabled { get; } // Should reflect visual state of any outline (temp or permanent)
+        int Team { get; set; } // Team of the selectable unit
 
-        public void EnableOutline();
-        public void DisableOutline();
+        void EnableOutline();
+        void DisableOutline();
 
-        public void Select();
-        public void Deselect();
+        void Select();   // Mark as primarily selected
+        void Deselect(); // Remove from primary selection
     }
 }

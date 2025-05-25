@@ -9,51 +9,51 @@ namespace AegisCore2D.UnitScripts
         [SerializeField] private float maxHealth = 100f;
         private float currentHealth;
 
-        [Header("Team")]
-        private int teamId; // Будет браться из Unit или устанавливаться отдельно
+        // TeamID is now primarily managed by the Unit class if present,
+        // but HealthComponent needs its own copy for IDamageable interface and independent operation.
+        private int _teamId; 
 
         public event Action<float, float> OnHealthChanged; // currentHealth, maxHealth
-        public event Action<GameObject> OnDeath;           // GameObject атакующего, если есть
+        public event Action<GameObject> OnDeath;           // Attacker's GameObject
 
         public GameObject MyGameObject => gameObject;
         public Transform MyTransform => transform;
-        public int TeamId => teamId;
+        public int TeamId => _teamId; // Use internal field
         public bool IsAlive => currentHealth > 0;
         public float CurrentHealth => currentHealth;
         public float MaxHealth => maxHealth;
 
-
-        void Awake()
+        private void Awake()
         {
             currentHealth = maxHealth;
-        }
-
-        void Start()
-        {
-            // Если этот компонент на юните, попытаемся взять teamId оттуда
-            Unit unit = GetComponent<Unit>();
+            // Try to get team from Unit component if available, otherwise it needs to be set via Initialize or SetTeamId
+            var unit = GetComponent<Unit>();
             if (unit != null)
             {
-                teamId = unit.Team;
+                _teamId = unit.Team; // Assuming Unit.Team getter is safe in Awake
             }
-            // Важно: оповестить UI о начальном состоянии здоровья
+        }
+
+        private void Start()
+        {
+            // Initial notification for UI elements like health bars
             OnHealthChanged?.Invoke(currentHealth, maxHealth);
         }
         
         public void SetTeamId(int newTeamId)
         {
-            teamId = newTeamId;
+            _teamId = newTeamId;
         }
 
         public void TakeDamage(float amount, GameObject attacker)
         {
-            if (!IsAlive) return; // Уже мертв
+            if (!IsAlive || amount <= 0) return;
 
             currentHealth -= amount;
             currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
 
             OnHealthChanged?.Invoke(currentHealth, maxHealth);
-            Debug.Log($"{gameObject.name} took {amount} damage. Current HP: {currentHealth}/{maxHealth}");
+            // Debug.Log($"{gameObject.name} took {amount} damage. HP: {currentHealth}/{maxHealth}"); // Optional
 
             if (currentHealth <= 0)
             {
@@ -63,43 +63,33 @@ namespace AegisCore2D.UnitScripts
 
         public void Heal(float amount)
         {
-            if (!IsAlive) return; // Нельзя лечить мертвых
+            if (!IsAlive || amount <= 0) return; 
 
             currentHealth += amount;
             currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
 
             OnHealthChanged?.Invoke(currentHealth, maxHealth);
-            Debug.Log($"{gameObject.name} healed for {amount}. Current HP: {currentHealth}/{maxHealth}");
+            // Debug.Log($"{gameObject.name} healed {amount}. HP: {currentHealth}/{maxHealth}"); // Optional
         }
 
         private void Die(GameObject attacker)
         {
-            Debug.Log($"{gameObject.name} has died.");
-            OnDeath?.Invoke(attacker);
-
-            // Базовая логика смерти - пока просто деактивируем
-            // Позже здесь будет проигрывание анимации смерти, выпадение лута и т.д.
-            // SelectionManager.RemoveUnitForTeam сам юнит должен позаботиться о вызове этого, либо здесь, если HealthComponent всегда на юните
+            // Debug.Log($"{gameObject.name} has died."); // Optional
+            OnDeath?.Invoke(attacker); // Notify listeners (e.g., Unit, HealthBarUI)
             
-            Unit unit = GetComponent<Unit>();
-            if (unit != null)
-            {
-                // Юнит сам должен отписаться от SelectionManager при уничтожении/смерти.
-                // Но если мы уничтожаем объект прямо здесь, то нужно это сделать.
-                // Лучше, чтобы Unit слушал OnDeath и сам вызывал свои методы очистки.
-            }
-
-            // gameObject.SetActive(false); // Простой вариант
-            Destroy(gameObject, 0.1f); // Или уничтожить с небольшой задержкой, чтобы другие системы успели отреагировать
+            // The GameObject's destruction is usually handled by the Unit itself after OnDeath,
+            // or by another system that listens to OnDeath.
+            // If HealthComponent can exist without a Unit, then uncommenting Destroy might be needed.
+            // For now, assume Unit handles its own destruction.
+            // Destroy(gameObject, 0.1f); 
         }
 
-        // Метод для установки начальных значений, если нужно (например, из ScriptableObject)
         public void Initialize(float newMaxHealth, int newTeamId)
         {
             maxHealth = newMaxHealth;
-            currentHealth = maxHealth;
-            teamId = newTeamId;
-            OnHealthChanged?.Invoke(currentHealth, maxHealth);
+            currentHealth = maxHealth; // Reset health on initialize
+            SetTeamId(newTeamId);
+            OnHealthChanged?.Invoke(currentHealth, maxHealth); // Notify UI
         }
     }
 }

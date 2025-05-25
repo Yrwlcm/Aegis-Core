@@ -173,6 +173,15 @@ namespace AegisCore2D
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""AttackMoveModifier"",
+                    ""type"": ""Button"",
+                    ""id"": ""491c3cbd-9b5e-4865-9be4-7acd99b32e71"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -558,6 +567,17 @@ namespace AegisCore2D
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
                     ""action"": ""Crouch"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""d6c28a06-4f20-4c39-8a8c-13bbc7ec9245"",
+                    ""path"": ""<Keyboard>/a"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Keyboard&Mouse"",
+                    ""action"": ""AttackMoveModifier"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -1174,6 +1194,7 @@ namespace AegisCore2D
             m_Player_Previous = m_Player.FindAction("Previous", throwIfNotFound: true);
             m_Player_Next = m_Player.FindAction("Next", throwIfNotFound: true);
             m_Player_Sprint = m_Player.FindAction("Sprint", throwIfNotFound: true);
+            m_Player_AttackMoveModifier = m_Player.FindAction("AttackMoveModifier", throwIfNotFound: true);
             // UI
             m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
             m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
@@ -1277,6 +1298,7 @@ namespace AegisCore2D
         private readonly InputAction m_Player_Previous;
         private readonly InputAction m_Player_Next;
         private readonly InputAction m_Player_Sprint;
+        private readonly InputAction m_Player_AttackMoveModifier;
         /// <summary>
         /// Provides access to input actions defined in input action map "Player".
         /// </summary>
@@ -1324,6 +1346,10 @@ namespace AegisCore2D
             /// Provides access to the underlying input action "Player/Sprint".
             /// </summary>
             public InputAction @Sprint => m_Wrapper.m_Player_Sprint;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/AttackMoveModifier".
+            /// </summary>
+            public InputAction @AttackMoveModifier => m_Wrapper.m_Player_AttackMoveModifier;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -1377,6 +1403,9 @@ namespace AegisCore2D
                 @Sprint.started += instance.OnSprint;
                 @Sprint.performed += instance.OnSprint;
                 @Sprint.canceled += instance.OnSprint;
+                @AttackMoveModifier.started += instance.OnAttackMoveModifier;
+                @AttackMoveModifier.performed += instance.OnAttackMoveModifier;
+                @AttackMoveModifier.canceled += instance.OnAttackMoveModifier;
             }
 
             /// <summary>
@@ -1415,6 +1444,9 @@ namespace AegisCore2D
                 @Sprint.started -= instance.OnSprint;
                 @Sprint.performed -= instance.OnSprint;
                 @Sprint.canceled -= instance.OnSprint;
+                @AttackMoveModifier.started -= instance.OnAttackMoveModifier;
+                @AttackMoveModifier.performed -= instance.OnAttackMoveModifier;
+                @AttackMoveModifier.canceled -= instance.OnAttackMoveModifier;
             }
 
             /// <summary>
@@ -1789,6 +1821,13 @@ namespace AegisCore2D
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnSprint(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "AttackMoveModifier" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnAttackMoveModifier(InputAction.CallbackContext context);
         }
         /// <summary>
         /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.

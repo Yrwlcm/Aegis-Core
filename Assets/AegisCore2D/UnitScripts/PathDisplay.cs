@@ -8,103 +8,176 @@ namespace AegisCore2D.UnitScripts
     [RequireComponent(typeof(AIPath))]
     public sealed class PathDisplay : MonoBehaviour
     {
-        [Header("Line")] [SerializeField] LineRenderer line;
-        [SerializeField] float width = 0.04f;
+        [Header("Line")]
+        [SerializeField] private LineRenderer line;
+        [SerializeField] private float lineWidth = 0.04f;
 
-        [Header("Target Marker")] [SerializeField]
-        SpriteRenderer targetMarker;
+        [Header("Target Marker")]
+        [SerializeField] private SpriteRenderer targetMarker;
+        [SerializeField] private float markerSize = 0.18f;
 
-        [SerializeField] Color markerColor = Color.cyan;
-        [SerializeField] float markerSize = 0.18f;
-
-        readonly List<Vector3> pathBuffer = new(); // переиспользуем без GC
-        AIPath agent;
-        bool visible;
+        private readonly List<Vector3> pathBuffer = new();
+        private AIPath agent;
+        private bool isVisible; // Renamed for clarity
 
         [Header("Colors")]
-        [SerializeField] private Color defaultPathColor = Color.cyan; // Старый markerColor
+        [SerializeField] private Color defaultPathColor = Color.cyan;
         [SerializeField] private Color attackPathColor = Color.red;
+        [SerializeField] private Color attackMovePathColor = Color.yellow;
 
-        void Awake()
+        private IDamageable attackTargetOverride;
+        public enum PathDisplayMode { None, Default, Attack, AttackMove }
+        private PathDisplayMode currentDisplayMode = PathDisplayMode.None;
+
+        private void Awake()
         {
             agent = GetComponent<AIPath>();
 
+            if (line == null) { Debug.LogError("PathDisplay: LineRenderer not assigned.", this); enabled = false; return; }
+            if (targetMarker == null) { Debug.LogError("PathDisplay: TargetMarker SpriteRenderer not assigned.", this); enabled = false; return; }
+
+
             line.positionCount = 0;
-            line.startWidth = line.endWidth = width;
-            // Устанавливаем дефолтный цвет при создании
-            SetPathColor(defaultPathColor); 
+            line.startWidth = line.endWidth = lineWidth;
+            line.enabled = false;
 
             targetMarker.transform.localScale = Vector3.one * markerSize;
-            // targetMarker.color = markerColor; // Цвет маркера будет меняться вместе с линией
             targetMarker.enabled = false;
+            
+            SetDisplayMode(PathDisplayMode.None); // Start with no display
         }
 
-        void Update()
+        public void SetAttackTargetOverride(IDamageable target)
         {
-            if (!visible || !agent.hasPath || agent.pathPending) return;
+            attackTargetOverride = target;
+        }
 
-            pathBuffer.Clear();
-            agent.GetRemainingPath(pathBuffer, out _);
-
-            if (Vector3.Distance(agent.destination, pathBuffer.Last()) > 0.6f)
+        private void Update()
+        {
+            if (!isVisible || currentDisplayMode == PathDisplayMode.None || agent == null)
             {
-                var startPoint = pathBuffer.First();
-                pathBuffer.Clear();
-                pathBuffer.Add(startPoint);
-                pathBuffer.Add(agent.destination);
-            }
-            if (pathBuffer.Count == 0)
-            {
-                line.positionCount = 0;
+                if (line.enabled) line.enabled = false;
+                if (targetMarker.enabled) targetMarker.enabled = false;
                 return;
             }
 
-            int n = pathBuffer.Count;
-            line.positionCount = n;
+            // Ensure enabled state is managed before drawing
+            if (!line.enabled) line.enabled = true;
+            if (!targetMarker.enabled) targetMarker.enabled = true;
 
-            for (int i = 0; i < n; i++)
+            if (currentDisplayMode == PathDisplayMode.Attack && attackTargetOverride != null && attackTargetOverride.IsAlive)
             {
-                Vector3 p = pathBuffer[i];
-                line.SetPosition(i, p);
+                DrawDirectLineToTarget(attackTargetOverride.MyTransform.position);
             }
+            else if (currentDisplayMode == PathDisplayMode.Default || currentDisplayMode == PathDisplayMode.AttackMove)
+            {
+                DrawAgentPath();
+            }
+            else // Other modes or invalid state
+            {
+                if (line.enabled) line.enabled = false;
+                if (targetMarker.enabled) targetMarker.enabled = false;
+            }
+        }
+        
+        private void DrawDirectLineToTarget(Vector3 targetPos)
+        {
+            line.positionCount = 2;
+            line.SetPosition(0, transform.position); // Start from unit's current position
+            line.SetPosition(1, targetPos);
+            targetMarker.transform.position = targetPos;
+        }
 
-            targetMarker.transform.position = agent.destination;
+        private void DrawAgentPath()
+        {
+            var shouldDrawAiPath = agent.hasPath &&
+                                   !agent.pathPending &&
+                                   agent.remainingDistance > agent.endReachedDistance && // Use agent.remainingDistance
+                                   agent.canMove;
+
+            if (shouldDrawAiPath)
+            {
+                pathBuffer.Clear();
+                agent.GetRemainingPath(pathBuffer, out _); // out bool stale - can be ignored if not used
+
+                // A* might not return the exact agent.destination as the last point if it's unreachable/off-graph.
+                // If the path is short or destination changed, ensure last point is the actual destination.
+                if (pathBuffer.Count > 0 && Vector3.Distance(agent.destination, pathBuffer.Last()) > 0.6f) // Threshold for "close enough"
+                {
+                    var startPoint = pathBuffer.First(); // Keep the first calculated point
+                    pathBuffer.Clear();
+                    pathBuffer.Add(startPoint); // Could also use transform.position for current pos
+                    pathBuffer.Add(agent.destination);
+                }
+                
+                if (pathBuffer.Count > 0) // Path has at least one point
+                {
+                    // Prepend current unit position if not already the first point (for smoother line start)
+                    if (pathBuffer.Count == 1 || Vector3.Distance(transform.position, pathBuffer.First()) > 0.1f)
+                    {
+                        pathBuffer.Insert(0, transform.position);
+                    }
+
+                    line.positionCount = pathBuffer.Count;
+                    line.SetPositions(pathBuffer.ToArray()); // More efficient for setting multiple points
+                    targetMarker.transform.position = agent.destination; // Marker always at final destination
+                }
+                else // No path from GetRemainingPath, but agent might still be trying to move to destination
+                {
+                     DrawDirectLineToTarget(agent.destination); // Fallback to direct line if path calculation fails but has dest
+                }
+            }
+            else // Not moving or no path
+            {
+                if (line.enabled) line.enabled = false;
+                if (targetMarker.enabled) targetMarker.enabled = false;
+            }
         }
 
 
         public void SetVisible(bool state)
         {
-            visible = state;
-            line.enabled = state;
-            targetMarker.enabled = state;
-            if (!state)
+            isVisible = state;
+            if (!state) // Immediately hide if set to not visible
             {
+                if (line.enabled) line.enabled = false;
+                if (targetMarker.enabled) targetMarker.enabled = false;
                 line.positionCount = 0;
-                // При скрытии можно сбрасывать цвет на дефолтный, если команда отменилась
-                SetPathColor(defaultPathColor); 
             }
         }
 
-        public void SetPathColor(Color newColor)
+        private void SetPathColor(Color newColor)
         {
-            // markerColor = newColor; // Обновляем текущий цвет, если он используется где-то еще
-            line.startColor = line.endColor = newColor;
-            if (targetMarker != null) // Проверка, если маркер опционален
-            {
-                targetMarker.color = newColor;
-            }
+            if (line != null) line.startColor = line.endColor = newColor;
+            if (targetMarker != null) targetMarker.color = newColor;
         }
 
-        // Метод для установки типа пути (и соответствующего цвета)
-        public void SetPathMode(bool isAttackMode)
+        public void SetDisplayMode(PathDisplayMode mode)
         {
-            if (isAttackMode)
+            currentDisplayMode = mode;
+            // Update visibility based on new mode, if path display is generally visible
+            if (isVisible) 
             {
-                SetPathColor(attackPathColor);
+                if (mode == PathDisplayMode.None)
+                {
+                    if (line.enabled) line.enabled = false;
+                    if (targetMarker.enabled) targetMarker.enabled = false;
+                } else {
+                    if (!line.enabled) line.enabled = true;
+                    if (!targetMarker.enabled) targetMarker.enabled = true;
+                }
             }
-            else
+
+
+            switch (mode)
             {
-                SetPathColor(defaultPathColor);
+                case PathDisplayMode.Default: SetPathColor(defaultPathColor); break;
+                case PathDisplayMode.Attack: SetPathColor(attackPathColor); break;
+                case PathDisplayMode.AttackMove: SetPathColor(attackMovePathColor); break;
+                case PathDisplayMode.None:
+                default:
+                    // Color doesn't matter if line is disabled.
+                    break;
             }
         }
     }
