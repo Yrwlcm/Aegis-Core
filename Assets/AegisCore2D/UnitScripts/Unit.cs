@@ -50,6 +50,8 @@ namespace AegisCore2D.UnitScripts
 
         [SerializeField] private AttackComponent attackComponent;
         [SerializeField] private Outline outline;
+        private SpriteRenderer unitSpriteRenderer;
+        private SpriteRenderer unitOutlineSpriteRenderer;
 
         [Header("UI")] [SerializeField] private GameObject healthBarPrefab;
         private HealthBarUI healthBarInstance;
@@ -84,6 +86,14 @@ namespace AegisCore2D.UnitScripts
             if (attackComponent == null) attackComponent = GetComponent<AttackComponent>();
             if (pathDisplay == null) pathDisplay = GetComponent<PathDisplay>();
             if (outline == null) outline = GetComponentInChildren<Outline>();
+
+
+            unitSpriteRenderer = GetComponent<SpriteRenderer>();
+            unitOutlineSpriteRenderer = transform.Find("Outline").GetComponent<SpriteRenderer>();
+            if (unitSpriteRenderer == null)
+            {
+                Debug.LogWarning($"Юнит {gameObject.name} не имеет компонента SpriteRenderer на основном объекте для разворота!", this);
+            }
 
             if (Health != null)
             {
@@ -160,21 +170,50 @@ namespace AegisCore2D.UnitScripts
             else
                 TriggerMeleeAnimation();
         }
-
+        
         private void UpdateAnimations()
         {
-            if (animator == null) return;
+            if (animator == null && unitSpriteRenderer == null) return; // Nothing to update
 
-            if (moveComponent != null)
+            if (moveComponent != null && Health != null && Health.IsAlive)
             {
-                bool isCurrentlyMoving = moveComponent.IsMoving();
-                animator.SetBool(IsWalking, isCurrentlyMoving);
+                // Animation state
+                if (animator != null)
+                {
+                    bool isCurrentlyMoving = moveComponent.IsMoving();
+                    animator.SetBool(IsWalking, isCurrentlyMoving);
+                }
+
+                // Sprite flipping logic
+                if (unitSpriteRenderer != null && moveComponent.agent != null)
+                {
+                    float horizontalVelocity = moveComponent.agent.desiredVelocity.x;
+                    // A small threshold to prevent flipping when standing still or moving very slowly vertically
+                    float flipThreshold = 0.05f;
+
+                    if (horizontalVelocity < -flipThreshold)
+                    {
+                        unitSpriteRenderer.flipX = true; // Moving left
+                        unitOutlineSpriteRenderer.flipX = true;
+                    }
+                    else if (horizontalVelocity > flipThreshold)
+                    {
+                        unitSpriteRenderer.flipX = false; // Moving right
+                        unitOutlineSpriteRenderer.flipX = false;
+                    }
+                    // If horizontalVelocity is between -flipThreshold and flipThreshold (e.g. moving vertically or stopped),
+                    // the sprite maintains its current flipX state.
+                }
             }
             else
             {
-                animator.SetBool(IsWalking, false);
+                if (animator != null)
+                {
+                    animator.SetBool(IsWalking, false);
+                }
             }
         }
+
 
         public void TriggerShootAnimation()
         {
@@ -286,7 +325,7 @@ namespace AegisCore2D.UnitScripts
                 }
             }
 
-            if (animator != null && Health.IsAlive)
+            if ((animator != null || unitSpriteRenderer != null) && Health.IsAlive)
             {
                 UpdateAnimations();
             }

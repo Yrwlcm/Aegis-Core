@@ -42,7 +42,7 @@ namespace AegisCore2D.GeneralScripts // Используй свой неймсп
             if (exitToMenuButton != null) exitToMenuButton.onClick.AddListener(ExitToMainMenu);
             if (backButtonFromControlsInGame != null) backButtonFromControlsInGame.onClick.AddListener(HideControlsInGame);
             
-            StartCoroutine(ScreenFader.Instance.FadeIn(5));
+            StartCoroutine(ScreenFader.Instance.FadeIn());
         }
 
         private void OnEnable() => inputActions?.UI.Enable();
