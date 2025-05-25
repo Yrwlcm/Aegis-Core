@@ -14,7 +14,7 @@ namespace AegisCore2D.UnitScripts
             {
                 // Attempt to get it from children if not directly assigned
                 outlineRenderer = GetComponentInChildren<SpriteRenderer>();
-                if (outlineRenderer == this.GetComponent<SpriteRenderer>()) // If it's the main SR
+                if (outlineRenderer == GetComponent<SpriteRenderer>()) // If it's the main SR
                 {
                     Debug.LogError("Outline component's outlineRenderer should be a separate SpriteRenderer, typically on a child object for layering.", this);
                     // Create one dynamically or disable? For now, log error.

@@ -9,7 +9,7 @@ namespace AegisCore2D.UnitScripts
 
         public AttackMoveCommand(Vector3 target)
         {
-            this.targetPosition = target;
+            targetPosition = target;
         }
 
         public void Execute(Unit unit)

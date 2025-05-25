@@ -9,7 +9,7 @@ namespace AegisCore2D.UnitScripts
 
         public AttackCommand(Unit unit, IDamageable target)
         {
-            this.executingUnit = unit;
+            executingUnit = unit;
             this.target = target;
         }
 

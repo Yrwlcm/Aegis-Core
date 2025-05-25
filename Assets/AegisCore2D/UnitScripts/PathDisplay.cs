@@ -49,7 +49,7 @@ namespace AegisCore2D.UnitScripts
 
         public void SetAttackTargetOverride(IDamageable target)
         {
-            this.attackTargetOverride = target;
+            attackTargetOverride = target;
         }
 
         private void Update()

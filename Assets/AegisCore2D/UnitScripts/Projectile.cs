@@ -11,24 +11,31 @@ namespace AegisCore2D.UnitScripts
         private int ownerTeamId;
         private GameObject attacker; 
 
-        private bool isInitialized = false; // Renamed for clarity
+        private bool isInitialized = false;
         private Vector3 lastKnownTargetPosition;
-        private const float TimeToLive = 10f; // Max lifetime of projectile
+        private const float TimeToLive = 10f;
+
+        // Добавим поле для слоя препятствий, если нужно будет его настраивать извне,
+        // но обычно он фиксированный.
+        private LayerMask obstacleLayerMask; 
 
         public void Initialize(IDamageable projectileTarget, float projectileDamage, float projectileSpeed,
                                int teamIdOfOwner, GameObject attackerGO)
         {
-            this.target = projectileTarget;
-            this.damage = projectileDamage;
-            this.speed = projectileSpeed;
-            this.ownerTeamId = teamIdOfOwner;
-            this.attacker = attackerGO;
+            target = projectileTarget;
+            damage = projectileDamage;
+            speed = projectileSpeed;
+            ownerTeamId = teamIdOfOwner;
+            attacker = attackerGO;
+
+            // Получаем маску слоя "Obstacle" один раз при инициализации
+            obstacleLayerMask = LayerMask.GetMask("Obstacle"); // Убедись, что слой "Obstacle" существует
 
             if (target != null && target.IsAlive)
             {
                 lastKnownTargetPosition = target.MyTransform.position;
                 var direction = (target.MyTransform.position - transform.position).normalized;
-                if (direction != Vector3.zero) // Prevent NaN rotation if target is at same position
+                if (direction != Vector3.zero) 
                 {
                     var angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
                     transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
@@ -36,9 +43,7 @@ namespace AegisCore2D.UnitScripts
             }
             else 
             {
-                // If target is invalid at launch, projectile might fly straight or self-destruct.
-                // For now, assume it needs a valid target or initial direction.
-                Debug.LogWarning($"Projectile initialized with invalid target from {attackerGO.name}. Destroying projectile.");
+                Debug.LogWarning($"Projectile initialized with invalid target from {attackerGO?.name}. Destroying projectile.");
                 DestroySelf(); 
                 return;
             }
@@ -59,25 +64,16 @@ namespace AegisCore2D.UnitScripts
             var direction = (lastKnownTargetPosition - transform.position).normalized;
             transform.position += direction * speed * Time.deltaTime;
             
-            // If projectile should home in (constantly turn towards target)
-            // if (direction != Vector3.zero) {
-            //     float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-            //     transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
-            // }
-            
-            // Simple distance check for impact. Consider using a small trigger collider on projectile for better hit detection.
             var distanceToTargetPoint = Vector2.Distance(transform.position, lastKnownTargetPosition);
-            if (distanceToTargetPoint < GetHitRadius()) // Use a hit radius
+            if (distanceToTargetPoint < GetHitRadius())
             {
-                TryHitBasedOnProximity();
+                TryHitBasedOnProximity(); // Этот метод менее надежен, чем триггеры
                 DestroySelf();
             }
         }
 
         private void TryHitBasedOnProximity()
         {
-            // This proximity check is less reliable than OnTriggerEnter2D.
-            // It's a fallback if trigger detection isn't used or fails.
             if (target != null && target.IsAlive)
             {
                 var actualDistanceToLiveTarget = Vector2.Distance(transform.position, target.MyTransform.position);
@@ -85,7 +81,6 @@ namespace AegisCore2D.UnitScripts
                 {
                     if (target.TeamId != ownerTeamId || target.TeamId == -1) 
                     {
-                        // Debug.Log($"Projectile (proximity) from {attacker?.name} hit {target.MyGameObject.name}"); // Optional
                         target.TakeDamage(damage, attacker);
                     }
                 }
@@ -95,25 +90,23 @@ namespace AegisCore2D.UnitScripts
         private float GetHitRadius()
         {
             var col = GetComponent<CircleCollider2D>();
-            if (col != null) return col.radius * Mathf.Max(transform.localScale.x, transform.localScale.y); // Use max scale component
-            return 0.3f; // Default hit radius
+            if (col != null) return col.radius * Mathf.Max(transform.localScale.x, transform.localScale.y);
+            return 0.3f;
         }
         
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (!isInitialized)
+            if (!isInitialized) return;
+            if (attacker != null && other.gameObject == attacker) return;
+            if (other.GetComponent<Projectile>() != null) return;
+            
+            // Проверка на столкновение с препятствием
+            // (1 << other.gameObject.layer) проверяет, установлен ли бит слоя other.gameObject в obstacleLayerMask
+            if (obstacleLayerMask != 0 && (obstacleLayerMask.value & (1 << other.gameObject.layer)) > 0)
             {
-                return;
-            }
-
-            if (attacker != null && other.gameObject == attacker)
-            {
-                return; // Pass through shooter
-            }
-
-            if (other.GetComponent<Projectile>() != null)
-            {
-                return; // Pass through other projectiles
+                // Debug.Log($"Projectile hit obstacle: {other.gameObject.name}. Destroying self."); // Опционально
+                DestroySelf();
+                return; // Важно выйти, чтобы не обрабатывать дальше как IDamageable
             }
             
             var damageable = other.GetComponentInSelfOrParent<IDamageable>();
@@ -122,29 +115,25 @@ namespace AegisCore2D.UnitScripts
             {
                 if (damageable.TeamId == ownerTeamId && ownerTeamId != -1) 
                 {
-                    // Debug.Log($"Projectile hit friendly: {damageable.MyGameObject.name}. Passing through."); // Optional
                     return; 
                 }
-
-                // Debug.Log($"Projectile (trigger) from {attacker?.name} hit {damageable.MyGameObject.name}"); // Optional
                 damageable.TakeDamage(damage, attacker);
                 DestroySelf(); 
             }
             else 
             {
-                // Hit something not damageable, e.g., environment
-                // Check layer if projectiles should be destroyed by obstacles
-                // For example: if (other.gameObject.layer == LayerMask.NameToLayer("Obstacles"))
-                // Debug.Log($"Projectile hit non-damageable object: {other.gameObject.name}. Destroying self."); // Optional
-                DestroySelf(); // Destroy on any collision with non-damageable that isn't self/projectile
+                // Если это не IDamageable и не Obstacle (уже проверено выше),
+                // то это какой-то другой объект. По умолчанию снаряд тоже уничтожится.
+                // Если нужно, чтобы он пролетал сквозь какие-то "декоративные" слои,
+                // здесь можно добавить доп. проверки.
+                // Debug.Log($"Projectile hit non-damageable/non-obstacle object: {other.gameObject.name}. Destroying self."); // Опционально
+                DestroySelf();
             }
         }
 
         private void DestroySelf()
         {
-            // Potential: Instantiate hit effect particle/sound
-            // e.g. if (hitEffectPrefab != null) Instantiate(hitEffectPrefab, transform.position, Quaternion.identity);
-            if (gameObject != null) // Check if not already destroyed
+            if (gameObject != null)
             {
                 Destroy(gameObject);
             }

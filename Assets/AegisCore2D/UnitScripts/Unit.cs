@@ -89,7 +89,7 @@ namespace AegisCore2D.UnitScripts
                 healthBarInstance = hbInstanceGo.GetComponent<HealthBarUI>();
                 if (healthBarInstance != null)
                 {
-                    healthBarInstance.SetHealthComponent(this.Health);
+                    healthBarInstance.SetHealthComponent(Health);
                 }
                 else Debug.LogError("Health Bar Prefab missing HealthBarUI component!", healthBarPrefab);
             }

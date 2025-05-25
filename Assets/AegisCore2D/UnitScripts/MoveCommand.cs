@@ -6,7 +6,7 @@ namespace AegisCore2D.UnitScripts
     {
         private readonly Vector3 targetPosition;
 
-        public MoveCommand(Vector3 target) => this.targetPosition = target;
+        public MoveCommand(Vector3 target) => targetPosition = target;
 
         public void Execute(Unit unit)
         {
