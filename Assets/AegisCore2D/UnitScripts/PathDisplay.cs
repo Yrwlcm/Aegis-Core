@@ -1,3 +1,5 @@
+// PathDisplay.cs
+
 using System.Collections.Generic;
 using System.Linq;
 using Pathfinding;
@@ -14,16 +16,18 @@ namespace AegisCore2D.UnitScripts
         [Header("Target Marker")] [SerializeField]
         SpriteRenderer targetMarker;
 
-        [SerializeField] Color markerColor = Color.cyan;
+        [SerializeField] Color markerColor = Color.cyan; // This will be overridden by SetPathColor
         [SerializeField] float markerSize = 0.18f;
 
-        readonly List<Vector3> pathBuffer = new(); // переиспользуем без GC
+        readonly List<Vector3> pathBuffer = new();
         AIPath agent;
         bool visible;
 
         [Header("Colors")]
-        [SerializeField] private Color defaultPathColor = Color.cyan; // Старый markerColor
+        [SerializeField] private Color defaultPathColor = Color.cyan;
         [SerializeField] private Color attackPathColor = Color.red;
+
+        private IDamageable attackTargetOverride; // To store the specific attack target
 
         void Awake()
         {
@@ -31,81 +35,127 @@ namespace AegisCore2D.UnitScripts
 
             line.positionCount = 0;
             line.startWidth = line.endWidth = width;
-            // Устанавливаем дефолтный цвет при создании
-            SetPathColor(defaultPathColor); 
+            SetPathColor(defaultPathColor); // Initialize with default color
 
             targetMarker.transform.localScale = Vector3.one * markerSize;
-            // targetMarker.color = markerColor; // Цвет маркера будет меняться вместе с линией
             targetMarker.enabled = false;
+        }
+
+        public void SetAttackTargetOverride(IDamageable target)
+        {
+            this.attackTargetOverride = target;
         }
 
         void Update()
         {
-            if (!visible || !agent.hasPath || agent.pathPending) return;
-
-            pathBuffer.Clear();
-            agent.GetRemainingPath(pathBuffer, out _);
-
-            if (Vector3.Distance(agent.destination, pathBuffer.Last()) > 0.6f)
+            if (!visible)
             {
-                var startPoint = pathBuffer.First();
-                pathBuffer.Clear();
-                pathBuffer.Add(startPoint);
-                pathBuffer.Add(agent.destination);
-            }
-            if (pathBuffer.Count == 0)
-            {
-                line.positionCount = 0;
+                line.enabled = false;
+                targetMarker.enabled = false;
                 return;
             }
 
-            int n = pathBuffer.Count;
-            line.positionCount = n;
-
-            for (int i = 0; i < n; i++)
+            if (attackTargetOverride != null && attackTargetOverride.IsAlive)
             {
-                Vector3 p = pathBuffer[i];
-                line.SetPosition(i, p);
+                // ATTACK TARGET OVERRIDE MODE: Draw a direct line to the attack target.
+                // Color should have been set to red by Unit.cs calling SetPathMode(true).
+                line.positionCount = 2;
+                line.SetPosition(0, transform.position); // Unit's current position
+                line.SetPosition(1, attackTargetOverride.MyTransform.position);
+                line.enabled = true;
+
+                targetMarker.transform.position = attackTargetOverride.MyTransform.position;
+                targetMarker.enabled = true;
             }
+            else
+            {
+                // NORMAL MOVEMENT PATH MODE (or no specific path to draw for current command)
+                // Color should have been set to default by Unit.cs calling SetPathMode(false).
 
-            targetMarker.transform.position = agent.destination;
+                bool shouldDrawAiPath = agent.hasPath &&
+                                        !agent.pathPending &&
+                                        agent.remainingDistance > agent.endReachedDistance &&
+                                        agent.canMove; // Check if agent is actively trying to move along a path
+
+                if (shouldDrawAiPath)
+                {
+                    pathBuffer.Clear();
+                    agent.GetRemainingPath(pathBuffer, out _);
+
+                    // Original logic for handling paths that don't seem to reach the agent's final destination
+                    if (pathBuffer.Count > 0 && Vector3.Distance(agent.destination, pathBuffer.Last()) > 0.6f)
+                    {
+                        var startPoint = pathBuffer.First();
+                        pathBuffer.Clear();
+                        pathBuffer.Add(startPoint);
+                        pathBuffer.Add(agent.destination);
+                    }
+
+                    if (pathBuffer.Count > 0)
+                    {
+                        line.positionCount = pathBuffer.Count;
+                        for (int i = 0; i < pathBuffer.Count; i++)
+                        {
+                            line.SetPosition(i, pathBuffer[i]);
+                        }
+                        line.enabled = true;
+                        targetMarker.transform.position = agent.destination; // Marker at A* path destination
+                        targetMarker.enabled = true;
+                    }
+                    else // No points from GetRemainingPath, but conditions for shouldDrawAiPath were met
+                    {
+                        // This case is less common if shouldDrawAiPath is true.
+                        // Could happen if path is extremely short or just became valid/invalid.
+                        // Fallback to a direct line if still moving towards a distinct destination.
+                        if (Vector3.Distance(transform.position, agent.destination) > agent.endReachedDistance && agent.canMove)
+                        {
+                            line.positionCount = 2;
+                            line.SetPosition(0, transform.position);
+                            line.SetPosition(1, agent.destination);
+                            line.enabled = true;
+                            targetMarker.transform.position = agent.destination;
+                            targetMarker.enabled = true;
+                        }
+                        else
+                        {
+                            line.enabled = false;
+                            targetMarker.enabled = false;
+                        }
+                    }
+                }
+                else // No A* path to draw (e.g., at destination, no path, path pending, or agent.canMove is false)
+                {
+                    line.enabled = false;
+                    targetMarker.enabled = false;
+                }
+            }
         }
-
 
         public void SetVisible(bool state)
         {
             visible = state;
-            line.enabled = state;
-            targetMarker.enabled = state;
-            if (!state)
+            // Enabling/disabling of line and marker is now handled in Update based on conditions
+            if (!state) // If explicitly hiding, turn them off immediately
             {
+                line.enabled = false;
+                targetMarker.enabled = false;
                 line.positionCount = 0;
-                // При скрытии можно сбрасывать цвет на дефолтный, если команда отменилась
-                SetPathColor(defaultPathColor); 
+                // Removed SetPathColor(defaultPathColor) to let Unit manage color persistence
             }
         }
 
         public void SetPathColor(Color newColor)
         {
-            // markerColor = newColor; // Обновляем текущий цвет, если он используется где-то еще
             line.startColor = line.endColor = newColor;
-            if (targetMarker != null) // Проверка, если маркер опционален
+            if (targetMarker != null)
             {
                 targetMarker.color = newColor;
             }
         }
 
-        // Метод для установки типа пути (и соответствующего цвета)
         public void SetPathMode(bool isAttackMode)
         {
-            if (isAttackMode)
-            {
-                SetPathColor(attackPathColor);
-            }
-            else
-            {
-                SetPathColor(defaultPathColor);
-            }
+            SetPathColor(isAttackMode ? attackPathColor : defaultPathColor);
         }
     }
 }
