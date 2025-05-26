@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using TMPro;
 using AegisCore2D.UnitScripts;
 using AegisCore2D.AI;
+using AegisCore2D.Buildings;
 
 namespace AegisCore2D.GameManagement
 {
@@ -27,6 +28,7 @@ namespace AegisCore2D.GameManagement
         [SerializeField] private Image nextWaveTimerBox;
         [SerializeField] private TextMeshProUGUI gameStatusText;
         [SerializeField] private GameObject spawnIndicatorPrefab;
+        [SerializeField] private Throne throne;
 
         [Header("Game State")]
         [Tooltip("Задержка (в секундах) перед самой первой волной. Будет использована как 'delayBeforeWave' для фиктивной \"нулевой\" волны.")]
@@ -311,20 +313,6 @@ namespace AegisCore2D.GameManagement
             Time.timeScale = 0f;
         }
 
-        private int CountPlayerUnits()
-        {
-            int count = 0;
-            Unit[] allUnits = FindObjectsOfType<Unit>();
-            foreach (var unit in allUnits)
-            {
-                if (unit.Team == 0 && unit.Health != null && unit.Health.IsAlive)
-                {
-                    count++;
-                }
-            }
-            return count;
-        }
-
         private void CheckPlayerDefeatCondition()
         {
             if (currentGameState == GameState.Victory || currentGameState == GameState.Defeat) return;
@@ -334,7 +322,7 @@ namespace AegisCore2D.GameManagement
             // Можно добавить проверку, что это не Pregame, если initialDelay очень долгий.
             if (currentWaveIndex >= 0 || currentGameState == GameState.WaitingForNextWave)
             {
-                 if (CountPlayerUnits() == 0)
+                 if (!throne.Health.IsAlive)
                  {
                     HandlePlayerDefeat();
                  }

@@ -12,6 +12,7 @@ namespace AegisCore2D.GeneralScripts
         {
             if (energyManager != null && energyManager.GetCurrentEnergy() >= unitPrice)
             {
+                energyManager.DecreaseEnergy(unitPrice);
                 barrack.SpawnPrefab(prefabToSpawn);
             }
         }

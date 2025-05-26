@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AegisCore2D.Buildings
 {
     [RequireComponent(typeof(HealthComponent))] // Добавляем это
-    public class Building : MonoBehaviour
+    public abstract class Building : MonoBehaviour
     {
         public GameObject GameObject { get; private set; }
 
@@ -80,20 +80,7 @@ namespace AegisCore2D.Buildings
             }
         }
 
-
-        private void Start()
-        {
-            
-        }
-
-        private void HandleDeath(GameObject attacker)
-        {
-           
-        }
-
-        private void Update()
-        {
-        }
+        protected abstract void HandleDeath(GameObject attacker);
 
         private void OnDestroy()
         {
