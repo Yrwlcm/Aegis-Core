@@ -95,7 +95,7 @@ namespace AegisCore2D.GeneralScripts
         private void Update()
         {
             // Проверяем, не над UI ли курсор И не на паузе ли игра
-            if (Time.timeScale == 0f) // Time.timeScale == 0f - это хороший индикатор паузы
+            if (Time.timeScale == 0f || IsPointerOverUIWithTag("EnergyCanvas")) // Time.timeScale == 0f - это хороший индикатор паузы
             {
                 // Если мы находились в процессе выделения рамкой, когда открылось меню, отменяем его.
                 if (dragging) 
@@ -110,6 +110,26 @@ namespace AegisCore2D.GeneralScripts
             
             HandleLeftMouseInput();
             HandleRightMouseInput();
+        }
+        
+        private bool IsPointerOverUIWithTag(string tag)
+        {
+            if (!EventSystem.current.IsPointerOverGameObject())
+                return false;
+
+            var pointerData = new PointerEventData(EventSystem.current)
+            {
+                position = Input.mousePosition
+            };
+
+            var results = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(pointerData, results);
+
+            foreach (var hit in results)
+                if (hit.gameObject.CompareTag(tag))
+                    return true;
+
+            return false;
         }
 
         private void HandleLeftMouseInput()

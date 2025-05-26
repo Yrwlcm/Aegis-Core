@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - HPBarWorldCanvas
+  - EnergyCanvas
   layers:
   - Default
   - TransparentFX

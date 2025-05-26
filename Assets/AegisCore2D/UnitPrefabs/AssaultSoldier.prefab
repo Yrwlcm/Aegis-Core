@@ -167,6 +167,10 @@ PrefabInstance:
       propertyPath: m_IsTrigger
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6883466243889229938, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
+      propertyPath: minAttackMoveScanRadius
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 9132546426040802008, guid: c034baf70c230c14a97568990aeee7e8, type: 3}
       propertyPath: maxHealth
       value: 75
